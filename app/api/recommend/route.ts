@@ -47,6 +47,7 @@ const CATEGORY_MENUS: Record<string, string[]> = {
   분식:       ['떡볶이', '순대', '튀김', '김밥', '라볶이', '치즈떡볶이', '쫄면'],
   치킨:       ['후라이드', '양념치킨', '간장치킨', '반반치킨', '파닭'],
   패스트푸드: ['버거', '감자튀김', '치킨너겟', '치즈버거'],
+  요리주점:   ['파전', '모듬전', '닭볶음탕', '두루치기', '해물파전', '감자전'],
 }
 
 const RESTRICT_MENU_AVOID: Record<string, string[]> = {
@@ -68,7 +69,9 @@ function pickMenus(category: string, cantEat: string[], count = 4): string[] {
   return (filtered.length > 0 ? filtered : all).slice(0, count)
 }
 
-// ─── 카카오 카테고리 정규화 ──────────────────────────────────────────────────
+// ─── 카카오 카테고리 정규화 (허용 카테고리 외 필터) ─────────────────────────
+const ALLOWED_CATEGORIES = new Set(['한식', '중식', '일식', '양식', '분식', '치킨', '패스트푸드', '요리주점'])
+
 function normalizeCategory(rawCategory: string): string {
   if (/중국|중식/.test(rawCategory)) return '중식'
   if (/일식|일본|초밥|라멘|우동|돈카츠|사시미/.test(rawCategory)) return '일식'
@@ -76,8 +79,9 @@ function normalizeCategory(rawCategory: string): string {
   if (/분식|떡볶이/.test(rawCategory)) return '분식'
   if (/치킨/.test(rawCategory)) return '치킨'
   if (/패스트푸드|햄버거/.test(rawCategory)) return '패스트푸드'
-  if (/한식|한정식|국밥|해장국|삼겹살|갈비|설렁탕|백반/.test(rawCategory)) return '한식'
-  return rawCategory.split('>').pop()?.trim() ?? rawCategory
+  if (/요리주점|이자카야|호프|선술집|포장마차/.test(rawCategory)) return '요리주점'
+  if (/한식|한정식|국밥|해장국|삼겹살|갈비|설렁탕|백반|구이전문|찌개|냉면/.test(rawCategory)) return '한식'
+  return '기타'
 }
 
 // ─── Kakao 식당 검색 (2페이지, 최대 30개) ────────────────────────────────────
@@ -173,6 +177,7 @@ function groupByCategory(
 
   const result: CategoryRecommendation[] = []
   for (const [category, rests] of Object.entries(byCategory)) {
+    if (!ALLOWED_CATEGORIES.has(category)) continue
     const matchCount = participants.filter(p =>
       !(p.dont_want ?? []).some(d => (DISLIKE_TO_CATEGORY[d] ?? []).includes(category))
     ).length

@@ -9,6 +9,8 @@ import type { CategoryRecommendation, RestaurantItem, Vote } from '@/types'
 declare global { interface Window { kakao: any } }
 
 // ─── 클라이언트측 카테고리 정규화 ─────────────────────────────────────────────
+const ALLOWED_CATEGORIES = new Set(['한식', '중식', '일식', '양식', '분식', '치킨', '패스트푸드', '요리주점'])
+
 function normalizeCategory(raw: string): string {
   if (/중국|중식/.test(raw)) return '중식'
   if (/일식|일본|초밥|라멘|우동|돈카츠|사시미/.test(raw)) return '일식'
@@ -16,8 +18,9 @@ function normalizeCategory(raw: string): string {
   if (/분식|떡볶이/.test(raw)) return '분식'
   if (/치킨/.test(raw)) return '치킨'
   if (/패스트푸드|햄버거/.test(raw)) return '패스트푸드'
-  if (/한식|한정식|국밥|해장국|삼겹살|갈비|설렁탕|백반/.test(raw)) return '한식'
-  return raw.split('>').pop()?.trim() ?? raw
+  if (/요리주점|이자카야|호프|선술집|포장마차/.test(raw)) return '요리주점'
+  if (/한식|한정식|국밥|해장국|삼겹살|갈비|설렁탕|백반|구이전문|찌개|냉면/.test(raw)) return '한식'
+  return '기타'
 }
 
 const CATEGORY_MENUS: Record<string, string[]> = {
@@ -28,6 +31,7 @@ const CATEGORY_MENUS: Record<string, string[]> = {
   분식: ['떡볶이', '순대', '튀김', '김밥', '라볶이', '치즈떡볶이', '쫄면'],
   치킨: ['후라이드', '양념치킨', '간장치킨', '반반치킨', '파닭'],
   패스트푸드: ['버거', '감자튀김', '치킨너겟', '치즈버거'],
+  요리주점: ['파전', '모듬전', '닭볶음탕', '두루치기', '해물파전', '감자전'],
 }
 const RESTRICT_AVOID: Record<string, string[]> = {
   pork: ['삼겹살', '제육볶음', '순대', '돈카츠'], seafood: ['짬뽕', '나베', '스시', '소바'],
@@ -54,7 +58,11 @@ interface ParticipantRow { cant_eat: string[]; dont_want: string[] }
 
 function buildGroups(places: PlaceRow[], participants: ParticipantRow[]): CategoryRecommendation[] {
   const byCat: Record<string, PlaceRow[]> = {}
-  for (const p of places) { const c = p.category || '기타'; (byCat[c] = byCat[c] ?? []).push(p) }
+  for (const p of places) {
+    const c = p.category || '기타'
+    if (!ALLOWED_CATEGORIES.has(c)) continue
+    ;(byCat[c] = byCat[c] ?? []).push(p)
+  }
   const allCantEat = Array.from(new Set(participants.flatMap(p => p.cant_eat ?? [])))
   const result: CategoryRecommendation[] = Object.entries(byCat).map(([category, rests]) => ({
     category,
@@ -111,7 +119,7 @@ export default function ResultsPage() {
   const [votes, setVotes] = useState<Vote[]>([])
   const [myName, setMyName] = useState('')
   const [myVotes, setMyVotes] = useState<Record<string, 'ok' | 'no'>>({})
-  const [openCategories, setOpenCategories] = useState<Set<string>>(new Set())
+  const [selectedMenu, setSelectedMenu] = useState<{ category: string; menu: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [searching, setSearching] = useState(false)
 
@@ -130,7 +138,6 @@ export default function ResultsPage() {
       if (roomData?.recommendations) {
         const cats = roomData.recommendations as CategoryRecommendation[]
         setGroups(cats)
-        if (cats.length > 0) setOpenCategories(new Set([cats[0].category]))
 
         // 더미 데이터 감지: URL이 전부 비어있으면 JS SDK로 재검색 (방장만)
         const isDummy = cats.every(g => g.restaurants.every(r => !r.url))
@@ -144,7 +151,6 @@ export default function ResultsPage() {
               const recs = buildGroups(places, partData ?? [])
               await supabase.from('rooms').update({ recommendations: recs }).eq('code', code)
               setGroups(recs)
-              if (recs.length > 0) setOpenCategories(new Set([recs[0].category]))
             }
           } catch (e) { console.error('JS SDK search failed', e) }
           setSearching(false)
@@ -183,8 +189,10 @@ export default function ResultsPage() {
     : null
   const winnerGroup = winnerEntry ? groups.find(g => g.restaurants.some(r => r.name === winnerEntry.r.name)) : null
 
-  const toggleCategory = (cat: string) => {
-    setOpenCategories(prev => { const next = new Set(prev); next.has(cat) ? next.delete(cat) : next.add(cat); return next })
+  const handleMenuClick = (category: string, menu: string) => {
+    setSelectedMenu(prev =>
+      prev?.category === category && prev?.menu === menu ? null : { category, menu }
+    )
   }
 
   const handleVote = async (restaurantName: string, vote: 'ok' | 'no') => {
@@ -216,7 +224,7 @@ export default function ResultsPage() {
       <div className="bg-orange-500 text-white py-5 px-4 text-center">
         <p className="text-2xl mb-1">🎉</p>
         <h1 className="text-xl font-black">추천 결과</h1>
-        <p className="text-orange-100 text-sm mt-1">카테고리를 눌러 식당을 확인하세요</p>
+        <p className="text-orange-100 text-sm mt-1">메뉴를 눌러 식당을 확인하세요</p>
       </div>
 
       <div className="max-w-md mx-auto px-4 pt-5 space-y-3">
@@ -253,65 +261,80 @@ export default function ResultsPage() {
           </div>
         )}
 
-        {/* 카테고리 카드 */}
+        {/* 카테고리 카드 — 메뉴 먼저, 클릭하면 식당 표시 */}
         {groups.map(group => {
-          const isOpen = openCategories.has(group.category)
           const isFullMatch = group.matchCount === group.totalCount
+          const isOpen = selectedMenu?.category === group.category
           return (
             <div key={group.category} className="bg-white rounded-2xl shadow-sm overflow-hidden">
-              <button onClick={() => toggleCategory(group.category)} className="w-full p-4 text-left">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h2 className="font-bold text-base">{group.category}</h2>
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                        isFullMatch ? 'bg-green-100 text-green-700' :
-                        group.matchCount === 0 ? 'bg-red-100 text-red-500' : 'bg-orange-100 text-orange-700'
-                      }`}>
-                        {isFullMatch ? '✓ 모두 가능' : group.matchCount === 0 ? '❌ 불가' : `${group.matchCount}/${group.totalCount}명`}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {group.menus.map(menu => (
-                        <span key={menu} className="bg-orange-50 text-orange-600 text-xs font-medium px-2.5 py-1 rounded-full">{menu}</span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 pt-0.5 flex-shrink-0">
-                    <span className="text-gray-400 text-xs">{group.restaurants.length}곳</span>
-                    <span className="text-gray-300 text-base leading-none">{isOpen ? '▲' : '▼'}</span>
-                  </div>
+              {/* 카테고리 헤더 */}
+              <div className="px-4 pt-4 pb-3">
+                <div className="flex items-center gap-2 mb-3">
+                  <h2 className="font-bold text-base">{group.category}</h2>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                    isFullMatch ? 'bg-green-100 text-green-700' :
+                    group.matchCount === 0 ? 'bg-red-100 text-red-500' : 'bg-orange-100 text-orange-700'
+                  }`}>
+                    {isFullMatch ? '✓ 모두 가능' : group.matchCount === 0 ? '❌ 불가' : `${group.matchCount}/${group.totalCount}명`}
+                  </span>
+                  <span className="ml-auto text-gray-400 text-xs">{group.restaurants.length}곳</span>
                 </div>
-              </button>
-
-              {isOpen && (
-                <div className="border-t border-gray-50 divide-y divide-gray-50">
-                  {group.restaurants.map(r => {
-                    const ok = okCount(r.name); const no = noCount(r.name); const myVote = myVotes[r.name]
+                {/* 메뉴 칩 — 클릭하면 식당 목록 열림 */}
+                <p className="text-xs text-gray-400 mb-2">먹고 싶은 메뉴를 선택하세요</p>
+                <div className="flex flex-wrap gap-2">
+                  {group.menus.map(menu => {
+                    const active = selectedMenu?.category === group.category && selectedMenu?.menu === menu
                     return (
-                      <div key={r.name} className="p-3 space-y-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-sm leading-snug">{r.name}</p>
-                            {r.address && <p className="text-gray-400 text-xs mt-0.5 truncate">{r.address}</p>}
-                            {r.distance && <p className="text-gray-400 text-xs">{formatDistance(r.distance)}</p>}
-                          </div>
-                          <a href={kakaoPlaceLink(r)} target="_blank" rel="noopener noreferrer"
-                            className="flex-shrink-0 text-xs text-blue-500 font-medium underline mt-0.5">지도</a>
-                        </div>
-                        <div className="flex gap-2">
-                          <button onClick={() => handleVote(r.name, 'ok')}
-                            className={`flex-1 py-2 rounded-xl font-bold text-sm transition-all active:scale-95 ${myVote === 'ok' ? 'bg-green-500 text-white shadow-sm' : 'bg-gray-100 text-gray-600'}`}>
-                            👍 OK{ok > 0 ? ` (${ok})` : ''}
-                          </button>
-                          <button onClick={() => handleVote(r.name, 'no')}
-                            className={`flex-1 py-2 rounded-xl font-bold text-sm transition-all active:scale-95 ${myVote === 'no' ? 'bg-red-500 text-white shadow-sm' : 'bg-gray-100 text-gray-600'}`}>
-                            👎 NO{no > 0 ? ` (${no})` : ''}
-                          </button>
-                        </div>
-                      </div>
+                      <button
+                        key={menu}
+                        onClick={() => handleMenuClick(group.category, menu)}
+                        className={`px-3 py-1.5 rounded-full text-sm font-semibold border-2 transition-all active:scale-95 ${
+                          active
+                            ? 'border-orange-400 bg-orange-500 text-white shadow-sm'
+                            : 'border-orange-200 bg-orange-50 text-orange-600'
+                        }`}
+                      >
+                        {active ? '✓ ' : ''}{menu}
+                      </button>
                     )
                   })}
+                </div>
+              </div>
+
+              {/* 식당 목록 — 메뉴 선택 시 표시 */}
+              {isOpen && (
+                <div className="border-t border-gray-100">
+                  <p className="px-4 py-2 text-xs text-gray-500 bg-gray-50">
+                    {selectedMenu?.menu} 파는 <span className="font-semibold text-orange-500">{group.category}</span> 식당 {group.restaurants.length}곳
+                  </p>
+                  <div className="divide-y divide-gray-50">
+                    {group.restaurants.map(r => {
+                      const ok = okCount(r.name); const no = noCount(r.name); const myVote = myVotes[r.name]
+                      return (
+                        <div key={r.name} className="p-3 space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm leading-snug">{r.name}</p>
+                              {r.address && <p className="text-gray-400 text-xs mt-0.5 truncate">{r.address}</p>}
+                              {r.distance && <p className="text-gray-400 text-xs">{formatDistance(r.distance)}</p>}
+                            </div>
+                            <a href={kakaoPlaceLink(r)} target="_blank" rel="noopener noreferrer"
+                              className="flex-shrink-0 text-xs text-blue-500 font-medium underline mt-0.5">지도</a>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => handleVote(r.name, 'ok')}
+                              className={`flex-1 py-2 rounded-xl font-bold text-sm transition-all active:scale-95 ${myVote === 'ok' ? 'bg-green-500 text-white shadow-sm' : 'bg-gray-100 text-gray-600'}`}>
+                              👍 OK{ok > 0 ? ` (${ok})` : ''}
+                            </button>
+                            <button onClick={() => handleVote(r.name, 'no')}
+                              className={`flex-1 py-2 rounded-xl font-bold text-sm transition-all active:scale-95 ${myVote === 'no' ? 'bg-red-500 text-white shadow-sm' : 'bg-gray-100 text-gray-600'}`}>
+                              👎 NO{no > 0 ? ` (${no})` : ''}
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               )}
             </div>
