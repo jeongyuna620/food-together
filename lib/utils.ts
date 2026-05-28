@@ -49,6 +49,7 @@ export const DONT_WANT_OPTIONS = [
 
 // ─── 예산 ────────────────────────────────────────────────────────────────────
 export const BUDGET_OPTIONS = [
+  { id: 'any',       label: '상관없어요' },
   { id: 'under_10k', label: '1만원 이하' },
   { id: '10k_20k',   label: '1~2만원' },
   { id: 'over_20k',  label: '2만원 이상' },
@@ -68,5 +69,5 @@ export const DONT_WANT_LABELS: Record<string, string> = {
 }
 
 export const BUDGET_LABELS: Record<string, string> = {
-  under_10k: '1만원 이하', '10k_20k': '1~2만원', over_20k: '2만원 이상',
+  any: '상관없어요', under_10k: '1만원 이하', '10k_20k': '1~2만원', over_20k: '2만원 이상',
 }

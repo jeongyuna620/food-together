@@ -169,7 +169,8 @@ function buildPrompt(participants: ParticipantRow[], restaurants: RawRestaurant[
   const pSummary = participants.map(p => {
     const cant = p.cant_eat?.length ? p.cant_eat.map(id => CANT_EAT_LABELS[id] ?? id).join(', ') : '없음'
     const dont = p.dont_want?.length ? p.dont_want.map(id => DONT_WANT_LABELS[id] ?? id).join(', ') : '없음'
-    return `- ${p.name}: 못 먹는 것=[${cant}] / 먹기 싫은 것=[${dont}] / 예산=[${BUDGET_LABELS[p.budget] ?? p.budget}]`
+    const budgetLabel = p.budget === 'any' ? '상관없어요' : (BUDGET_LABELS[p.budget] ?? p.budget)
+    return `- ${p.name}: 못 먹는 것=[${cant}] / 먹기 싫은 것=[${dont}] / 예산=[${budgetLabel}]`
   }).join('\n')
 
   const rList = restaurants.map((r, i) =>

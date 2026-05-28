@@ -69,6 +69,7 @@ export default function ResultsPage() {
   }
 
   const kakaoMapLink = (r: Restaurant) => {
+    if (r.url) return r.url
     if (r.lat && r.lng)
       return `https://map.kakao.com/link/to/${encodeURIComponent(r.name)},${r.lat},${r.lng}`
     return `https://map.kakao.com/?q=${encodeURIComponent(r.name)}`

@@ -19,6 +19,7 @@ export default function RoomPage() {
   // 폼 상태
   const [name, setName] = useState('')
   const [cantEat, setCantEat] = useState<string[]>([])
+  const [cantEatCustom, setCantEatCustom] = useState('')
   const [dontWant, setDontWant] = useState<string[]>([])
   const [budget, setBudget] = useState('')
   const [gpsStatus, setGpsStatus] = useState<GpsStatus>('idle')
@@ -72,8 +73,9 @@ export default function RoomPage() {
         .from('participants').select('id')
         .eq('room_code', code).eq('name', name.trim()).maybeSingle()
 
+      const customItems = cantEatCustom.split(/[,，\s]+/).map(s => s.trim()).filter(Boolean)
       const payload = {
-        cant_eat: cantEat,
+        cant_eat: [...cantEat, ...customItems],
         dont_want: dontWant,
         budget,
         lat: location?.lat ?? null,
@@ -140,7 +142,7 @@ export default function RoomPage() {
         <section className="bg-white rounded-2xl p-4 shadow-sm">
           <h2 className="font-bold text-base mb-1">못 먹는 것</h2>
           <p className="text-xs text-gray-400 mb-3">해당 없으면 넘어가세요</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-2 mb-3">
             {CANT_EAT_OPTIONS.map(opt => (
               <button
                 key={opt.id}
@@ -155,6 +157,13 @@ export default function RoomPage() {
               </button>
             ))}
           </div>
+          <input
+            type="text"
+            value={cantEatCustom}
+            onChange={e => setCantEatCustom(e.target.value)}
+            placeholder="기타 직접 입력 (예: 두부, 콩나물)"
+            className="w-full border-2 border-gray-100 rounded-xl p-3 text-sm focus:outline-none focus:border-red-300 text-gray-600 placeholder-gray-300"
+          />
         </section>
 
         {/* 오늘 먹기 싫은 것 */}
