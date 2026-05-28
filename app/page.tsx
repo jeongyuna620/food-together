@@ -9,6 +9,7 @@ export default function HomePage() {
   // 방 만들기
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [hostName, setHostName] = useState('')
+  const [location, setLocation] = useState('')
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState('')
 
@@ -27,7 +28,10 @@ export default function HomePage() {
       const res = await fetch('/api/rooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ host_name: hostName.trim() }),
+        body: JSON.stringify({
+          host_name: hostName.trim(),
+          location: location.trim(),
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || '방 생성 실패')
@@ -43,10 +47,7 @@ export default function HomePage() {
 
   const handleJoin = async () => {
     const code = joinCode.trim().toUpperCase()
-    if (code.length < 6) {
-      setJoinError('6자리 코드를 입력해주세요')
-      return
-    }
+    if (code.length < 6) { setJoinError('6자리 코드를 입력해주세요'); return }
     setIsJoining(true)
     setJoinError('')
 
@@ -71,25 +72,37 @@ export default function HomePage() {
           <div className="text-7xl mb-4">🍽️</div>
           <h1 className="text-4xl font-black text-white mb-2">오늘 뭐먹지?</h1>
           <p className="text-orange-100 text-base leading-relaxed">
-            각자의 취향을 입력하면<br />AI가 딱 맞는 식당을 추천해줘요
+            각자의 취향을 입력하면<br />딱 맞는 식당을 추천해줘요
           </p>
         </div>
 
         {/* 방 만들기 */}
         {showCreateForm ? (
           <div className="bg-white rounded-3xl p-6 shadow-2xl mb-4">
-            <h2 className="font-bold text-xl text-center mb-1">방장 이름</h2>
-            <p className="text-gray-400 text-sm text-center mb-4">친구들에게 보여질 이름이에요</p>
+            <h2 className="font-bold text-xl text-center mb-4">방 만들기</h2>
 
+            <label className="block text-sm font-semibold text-gray-600 mb-1">이름</label>
             <input
               type="text"
               value={hostName}
               onChange={e => setHostName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleCreate()}
-              placeholder="이름 입력"
+              placeholder="친구들에게 보일 이름"
               maxLength={12}
               autoFocus
-              className="w-full border-2 border-gray-100 rounded-2xl p-4 text-center text-lg font-medium focus:outline-none focus:border-orange-400 mb-3"
+              className="w-full border-2 border-gray-100 rounded-2xl p-3 text-base font-medium focus:outline-none focus:border-orange-400 mb-4"
+            />
+
+            <label className="block text-sm font-semibold text-gray-600 mb-1">
+              약속 장소 <span className="text-gray-400 font-normal">(선택)</span>
+            </label>
+            <input
+              type="text"
+              value={location}
+              onChange={e => setLocation(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleCreate()}
+              placeholder="예: 강남역, 홍대입구, 건국대"
+              maxLength={30}
+              className="w-full border-2 border-gray-100 rounded-2xl p-3 text-base font-medium focus:outline-none focus:border-orange-400 mb-4"
             />
 
             {createError && <p className="text-red-500 text-sm text-center mb-3">{createError}</p>}
@@ -120,7 +133,7 @@ export default function HomePage() {
         {/* 코드로 입장 */}
         {showJoinForm ? (
           <div className="bg-white rounded-3xl p-6 shadow-2xl">
-            <h2 className="font-bold text-xl text-center mb-1">방 코드 입력</h2>
+            <h2 className="font-bold text-xl text-center mb-1">코드로 입장</h2>
             <p className="text-gray-400 text-sm text-center mb-4">친구에게 받은 6자리 코드</p>
 
             <input

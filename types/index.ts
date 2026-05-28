@@ -1,6 +1,7 @@
 export interface Room {
   code: string
   host_name: string
+  location: string
   status: 'waiting' | 'recommending' | 'results'
   recommendations: Restaurant[] | null
   created_at: string
@@ -13,8 +14,9 @@ export interface Participant {
   cant_eat: string[]
   dont_want: string[]
   budget: string
-  lat: number | null
-  lng: number | null
+  spicy: string    // 'no' | 'normal' | 'yes'
+  mood: string     // 'quick' | 'relaxed' | 'any'
+  craving: string  // 'korean' | 'chinese' | 'japanese' | 'western' | 'bunsik' | ''
   completed: boolean
   created_at: string
 }
@@ -35,6 +37,7 @@ export interface Restaurant {
   matchCount: number
   totalCount: number
   reason: string
+  menus: string[]
   address: string
   phone?: string
   url?: string

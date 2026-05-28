@@ -15,7 +15,7 @@ function generateCode(): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const { host_name } = await req.json()
+    const { host_name, location } = await req.json()
     if (!host_name?.trim()) {
       return NextResponse.json({ error: '이름을 입력해주세요' }, { status: 400 })
     }
@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
     const { error } = await supabase.from('rooms').insert({
       code,
       host_name: host_name.trim(),
+      location: location?.trim() ?? '',
       status: 'waiting',
     })
     if (error) throw error

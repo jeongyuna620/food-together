@@ -1,22 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import type { Restaurant } from '@/types'
-import { CANT_EAT_LABELS, DONT_WANT_LABELS, BUDGET_LABELS } from '@/lib/utils'
+import { CANT_EAT_LABELS, DONT_WANT_LABELS, BUDGET_LABELS, SPICY_LABELS, MOOD_LABELS, CRAVING_LABELS } from '@/lib/utils'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-// ─── 타입 ────────────────────────────────────────────────────────────────────
-
 interface ParticipantRow {
   name: string
   cant_eat: string[]
   dont_want: string[]
   budget: string
-  lat: number | null
-  lng: number | null
+  spicy: string
+  mood: string
+  craving: string
 }
 
 interface RawRestaurant {
@@ -30,158 +29,180 @@ interface RawRestaurant {
   lng: number
 }
 
+// ─── 카테고리별 추천 메뉴 ────────────────────────────────────────────────────
+
+const CATEGORY_MENUS: Record<string, string[]> = {
+  한식:       ['된장찌개', '제육볶음', '비빔밥', '순두부찌개', '삼겹살', '갈비탕', '불고기'],
+  일식:       ['라멘', '돈카츠', '우동', '규동', '오야코동', '스시', '나베'],
+  중식:       ['짜장면', '짬뽕', '볶음밥', '탕수육', '마라탕', '깐풍기'],
+  양식:       ['크림파스타', '피자', '스테이크', '리조또', '알리오올리오'],
+  분식:       ['떡볶이', '순대', '튀김', '김밥', '라볶이', '치즈떡볶이'],
+  치킨:       ['후라이드', '양념치킨', '간장치킨', '반반치킨'],
+  패스트푸드: ['버거', '감자튀김', '치킨너겟', '콜라'],
+}
+
+// 못 먹는 재료 → 피해야 할 메뉴 키워드
+const RESTRICT_MENU_AVOID: Record<string, string[]> = {
+  pork:       ['삼겹살', '제육볶음', '순대', '돈카츠', '짜장면'],
+  seafood:    ['짬뽕', '나베', '스시'],
+  chicken:    ['오야코동', '간장치킨', '양념치킨', '후라이드', '깐풍기', '치킨너겟'],
+  beef:       ['불고기', '갈비탕', '규동', '스테이크'],
+  vegetarian: ['삼겹살', '제육볶음', '돈카츠', '규동', '불고기', '갈비탕', '순대', '후라이드', '양념치킨', '깐풍기'],
+  dairy:      ['크림파스타', '리조또', '치즈떡볶이'],
+  egg:        ['오야코동'],
+}
+
+function filterMenus(menus: string[], cantEat: string[]): string[] {
+  const avoid = cantEat.flatMap(r => RESTRICT_MENU_AVOID[r] ?? [])
+  return menus.filter(m => !avoid.some(a => m.includes(a)))
+}
+
+function pickMenus(category: string, cantEat: string[], count = 3): string[] {
+  const all = CATEGORY_MENUS[category] ?? ['다양한 메뉴']
+  const filtered = filterMenus(all, cantEat)
+  return (filtered.length > 0 ? filtered : all).slice(0, count)
+}
+
 // ─── Kakao 식당 검색 ────────────────────────────────────────────────────────
 
 interface KakaoDoc {
-  place_name: string
-  address_name: string
-  category_name: string
-  distance: string
-  phone: string
-  place_url: string
-  x: string
-  y: string
+  place_name: string; address_name: string; category_name: string
+  distance: string; phone: string; place_url: string; x: string; y: string
 }
 
-async function searchKakao(lat: number, lng: number): Promise<RawRestaurant[]> {
+async function searchKakao(location: string, lat: number, lng: number): Promise<RawRestaurant[]> {
   const key = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY
-  if (!key) return dummyRestaurants(lat, lng)
+  if (!key) return dummyRestaurants(location)
 
   try {
-    const res = await fetch(
-      `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=FD6&x=${lng}&y=${lat}&radius=1000&sort=distance&size=15`,
-      { headers: { Authorization: `KakaoAK ${key}` } }
-    )
-    if (!res.ok) return dummyRestaurants(lat, lng)
+    const url = location
+      ? `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(location + ' 맛집')}&size=15`
+      : `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=FD6&x=${lng}&y=${lat}&radius=1000&sort=distance&size=15`
+
+    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } })
+    if (!res.ok) return dummyRestaurants(location)
     const data = await res.json()
-    if (!data.documents?.length) return dummyRestaurants(lat, lng)
+    if (!data.documents?.length) return dummyRestaurants(location)
 
     return (data.documents as KakaoDoc[]).map(d => ({
       name: d.place_name,
       address: d.address_name,
       category: d.category_name.split('>').pop()?.trim() ?? d.category_name,
-      distance: d.distance,
-      phone: d.phone,
-      url: d.place_url,
-      lat: parseFloat(d.y),
-      lng: parseFloat(d.x),
+      distance: d.distance || '500',
+      phone: d.phone, url: d.place_url,
+      lat: parseFloat(d.y), lng: parseFloat(d.x),
     }))
   } catch {
-    return dummyRestaurants(lat, lng)
+    return dummyRestaurants(location)
   }
 }
 
-function dummyRestaurants(lat: number, lng: number): RawRestaurant[] {
+function dummyRestaurants(location: string): RawRestaurant[] {
+  const area = location || '서울'
+  const base = { phone: '', url: '', lat: 37.5665, lng: 126.9780 }
   return [
-    { name: '진이찬방',    address: '서울시 강남구', category: '한식',       distance: '150', phone: '', url: '', lat: lat + 0.001, lng: lng + 0.001 },
-    { name: '스시히로',    address: '서울시 강남구', category: '일식',       distance: '220', phone: '', url: '', lat: lat + 0.002, lng: lng + 0.002 },
-    { name: '홍콩반점',    address: '서울시 강남구', category: '중식',       distance: '310', phone: '', url: '', lat: lat + 0.003, lng: lng + 0.003 },
-    { name: '파스타베네',  address: '서울시 강남구', category: '양식',       distance: '400', phone: '', url: '', lat: lat + 0.004, lng: lng + 0.004 },
-    { name: '한촌설렁탕',  address: '서울시 강남구', category: '한식',       distance: '480', phone: '', url: '', lat: lat + 0.005, lng: lng + 0.005 },
-    { name: '마루초밥',    address: '서울시 강남구', category: '일식',       distance: '540', phone: '', url: '', lat: lat + 0.006, lng: lng + 0.006 },
-    { name: '엽기떡볶이',  address: '서울시 강남구', category: '분식',       distance: '600', phone: '', url: '', lat: lat + 0.007, lng: lng + 0.007 },
-    { name: '굽네치킨',    address: '서울시 강남구', category: '치킨',       distance: '650', phone: '', url: '', lat: lat + 0.008, lng: lng + 0.008 },
-    { name: '본죽&비빔밥', address: '서울시 강남구', category: '한식',       distance: '720', phone: '', url: '', lat: lat + 0.009, lng: lng + 0.009 },
-    { name: '맥도날드',    address: '서울시 강남구', category: '패스트푸드', distance: '800', phone: '', url: '', lat: lat + 0.010, lng: lng + 0.010 },
+    { name: '진이찬방',    address: `${area} 근처`, category: '한식',       distance: '150', ...base },
+    { name: '스시히로',    address: `${area} 근처`, category: '일식',       distance: '220', ...base },
+    { name: '홍콩반점',    address: `${area} 근처`, category: '중식',       distance: '310', ...base },
+    { name: '파스타베네',  address: `${area} 근처`, category: '양식',       distance: '400', ...base },
+    { name: '한촌설렁탕',  address: `${area} 근처`, category: '한식',       distance: '480', ...base },
+    { name: '마루초밥',    address: `${area} 근처`, category: '일식',       distance: '540', ...base },
+    { name: '엽기떡볶이',  address: `${area} 근처`, category: '분식',       distance: '600', ...base },
+    { name: '굽네치킨',    address: `${area} 근처`, category: '치킨',       distance: '650', ...base },
+    { name: '본죽&비빔밥', address: `${area} 근처`, category: '한식',       distance: '720', ...base },
+    { name: '맥도날드',    address: `${area} 근처`, category: '패스트푸드', distance: '800', ...base },
   ]
 }
 
-// ─── 규칙 기반 추천 (API 키 없을 때) ─────────────────────────────────────────
+// ─── 규칙 기반 추천 ──────────────────────────────────────────────────────────
 
 const DISLIKE_TO_CATEGORY: Record<string, string[]> = {
-  korean:   ['한식'],
-  chinese:  ['중식'],
-  japanese: ['일식'],
-  western:  ['양식'],
-  bunsik:   ['분식'],
-  meat:     ['치킨'],
-  soup:     [],
+  korean: ['한식'], chinese: ['중식'], japanese: ['일식'],
+  western: ['양식'], bunsik: ['분식'], meat: ['치킨'], fastfood: ['패스트푸드'],
 }
 
-// 재료 제한별 피해야 할 카테고리
-const RESTRICTION_AVOID: Record<string, string[]> = {
-  pork:       ['분식'],           // 순대 등
-  seafood:    [],                  // 대부분 선택 가능
-  chicken:    ['치킨'],
-  beef:       [],
-  vegetarian: ['치킨', '패스트푸드'],
-  dairy:      [],
-  gluten:     [],
-}
+const QUICK_CATEGORIES = ['분식', '패스트푸드', '치킨']
+const SPICY_HEAVY = ['분식', '중식']
 
-const REASON_MAP: Record<string, string> = {
-  한식:       '모두가 편하게 먹을 수 있는 선택이에요',
-  일식:       '다양한 입맛에 맞는 메뉴가 많아요',
-  중식:       '가성비 좋고 푸짐하게 즐길 수 있어요',
-  양식:       '분위기 있게 즐길 수 있는 선택이에요',
-  분식:       '가볍고 빠르게 먹을 수 있어요',
-  치킨:       '다 같이 즐기기 좋은 선택이에요',
-  패스트푸드: '빠르고 간편하게 먹을 수 있어요',
-}
-
-function calcMatchCount(restaurant: RawRestaurant, participants: ParticipantRow[]): number {
+function calcMatchCount(r: RawRestaurant, participants: ParticipantRow[]): number {
   return participants.filter(p => {
-    const catDisliked = (p.dont_want ?? []).some(d =>
-      (DISLIKE_TO_CATEGORY[d] ?? []).includes(restaurant.category)
-    )
+    const catDisliked = (p.dont_want ?? []).some(d => (DISLIKE_TO_CATEGORY[d] ?? []).includes(r.category))
     if (catDisliked) return false
-
-    const restrictionBlocked = (p.cant_eat ?? []).some(r =>
-      (RESTRICTION_AVOID[r] ?? []).includes(restaurant.category)
-    )
-    return !restrictionBlocked
+    if (p.spicy === 'no' && SPICY_HEAVY.includes(r.category)) return false
+    if (p.mood === 'quick' && !QUICK_CATEGORIES.includes(r.category)) return false
+    return true
   }).length
 }
 
-function ruleBased(participants: ParticipantRow[], restaurants: RawRestaurant[]): { name: string; matchCount: number; reason: string }[] {
-  const scored = restaurants.map(r => ({
-    r,
-    score: calcMatchCount(r, participants),
-  }))
+function ruleBased(
+  participants: ParticipantRow[],
+  restaurants: RawRestaurant[],
+  allCantEat: string[]
+): { name: string; matchCount: number; reason: string; menus: string[] }[] {
+  // 크레이빙(땡기는 것) 점수 보너스
+  const cravingCounts: Record<string, number> = {}
+  for (const p of participants) {
+    if (p.craving) {
+      const cats = DISLIKE_TO_CATEGORY[p.craving] ?? [p.craving]
+      cats.forEach(c => { cravingCounts[c] = (cravingCounts[c] ?? 0) + 1 })
+    }
+  }
 
-  scored.sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score
-    return parseInt(a.r.distance) - parseInt(b.r.distance)
+  const scored = restaurants.map(r => {
+    const match = calcMatchCount(r, participants)
+    const craving = cravingCounts[r.category] ?? 0
+    return { r, score: match * 10 + craving * 3 - parseInt(r.distance) / 200 }
   })
 
+  scored.sort((a, b) => b.score - a.score)
+
   const seen = new Set<string>()
-  const top3: typeof scored = []
+  const top5: typeof scored = []
+  // 카테고리 다양성 우선
   for (const item of scored) {
-    if (top3.length >= 3) break
-    if (seen.has(item.r.category)) continue
-    seen.add(item.r.category)
-    top3.push(item)
+    if (top5.length >= 5) break
+    if (!seen.has(item.r.category)) { seen.add(item.r.category); top5.push(item) }
+  }
+  // 부족하면 나머지 채우기
+  for (const item of scored) {
+    if (top5.length >= 5) break
+    if (!top5.includes(item)) top5.push(item)
   }
 
-  // 카테고리 다양성 확보 후 부족하면 그냥 채우기
-  for (const item of scored) {
-    if (top3.length >= 3) break
-    if (top3.includes(item)) continue
-    top3.push(item)
-  }
-
-  return top3.map(({ r, score }) => ({
-    name: r.name,
-    matchCount: score,
-    reason: REASON_MAP[r.category] ?? '근처 맛집이에요',
-  }))
+  return top5.map(({ r, score: _s }) => {
+    const match = calcMatchCount(r, participants)
+    const menus = pickMenus(r.category, allCantEat)
+    let reason = '모두가 즐길 수 있는 선택이에요'
+    if (match === participants.length) reason = `${participants.length}명 모두 조건에 맞아요 👍`
+    else if (match > 0) reason = `${match}/${participants.length}명 조건 충족`
+    return { name: r.name, matchCount: match, reason, menus }
+  })
 }
 
-// ─── Claude 추천 (API 키 있을 때) ────────────────────────────────────────────
+// ─── Claude 추천 ─────────────────────────────────────────────────────────────
 
-function buildPrompt(participants: ParticipantRow[], restaurants: RawRestaurant[]): string {
+function buildPrompt(participants: ParticipantRow[], restaurants: RawRestaurant[], location: string): string {
   const pSummary = participants.map(p => {
     const cant = p.cant_eat?.length ? p.cant_eat.map(id => CANT_EAT_LABELS[id] ?? id).join(', ') : '없음'
     const dont = p.dont_want?.length ? p.dont_want.map(id => DONT_WANT_LABELS[id] ?? id).join(', ') : '없음'
-    const budget = BUDGET_LABELS[p.budget] ?? p.budget ?? '무관'
-    return `- ${p.name}: 못 먹는 것=[${cant}] / 먹기 싫은 것=[${dont}] / 예산=${budget}`
-  }).join('\n')
+    const craving = p.craving ? CRAVING_LABELS[p.craving] ?? p.craving : '없음'
+    return [
+      `- ${p.name}:`,
+      `  못 먹는 것=[${cant}]`,
+      `  먹기 싫은 것=[${dont}]`,
+      `  땡기는 것=[${craving}]`,
+      `  매운 음식=[${SPICY_LABELS[p.spicy] ?? p.spicy}]`,
+      `  식사 스타일=[${MOOD_LABELS[p.mood] ?? p.mood}]`,
+      `  예산=[${BUDGET_LABELS[p.budget] ?? p.budget}]`,
+    ].join('\n')
+  }).join('\n\n')
 
   const rList = restaurants.map((r, i) =>
     `${i + 1}. ${r.name} (종류: ${r.category}, 거리: ${r.distance}m, 주소: ${r.address})`
   ).join('\n')
 
   return `당신은 그룹 식당 추천 전문가입니다.
+약속 장소: ${location || '미정'}
 
 ## 참여자 ${participants.length}명
 ${pSummary}
@@ -190,31 +211,32 @@ ${pSummary}
 ${rList}
 
 ## 작업
-모든 참여자의 제약을 최대한 만족하는 식당 3곳을 골라주세요.
+모든 참여자의 조건을 고려해 최적의 식당 5곳을 고르고, 각 식당에 맞는 추천 메뉴 3개도 제안해주세요.
 
 반드시 아래 JSON만 출력하세요:
 {
   "recommendations": [
-    {"name": "식당이름(목록과 정확히 일치)", "matchCount": 숫자, "reason": "추천 이유 20자 이내"},
-    {"name": "...", "matchCount": 숫자, "reason": "..."},
-    {"name": "...", "matchCount": 숫자, "reason": "..."}
+    {"name": "식당이름(목록과 정확히 일치)", "matchCount": 숫자, "reason": "추천 이유 20자 이내", "menus": ["메뉴1", "메뉴2", "메뉴3"]},
+    {"name": "...", "matchCount": 숫자, "reason": "...", "menus": ["...", "...", "..."]},
+    {"name": "...", "matchCount": 숫자, "reason": "...", "menus": ["...", "...", "..."]},
+    {"name": "...", "matchCount": 숫자, "reason": "...", "menus": ["...", "...", "..."]},
+    {"name": "...", "matchCount": 숫자, "reason": "...", "menus": ["...", "...", "..."]}
   ]
 }`
 }
 
 async function claudeRecommend(
   participants: ParticipantRow[],
-  restaurants: RawRestaurant[]
-): Promise<{ name: string; matchCount: number; reason: string }[]> {
+  restaurants: RawRestaurant[],
+  location: string
+): Promise<{ name: string; matchCount: number; reason: string; menus: string[] }[]> {
   const { default: Anthropic } = await import('@anthropic-ai/sdk')
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
   const msg = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 1024,
-    messages: [{ role: 'user', content: buildPrompt(participants, restaurants) }],
+    messages: [{ role: 'user', content: buildPrompt(participants, restaurants, location) }],
   })
-
   const text = msg.content[0].type === 'text' ? msg.content[0].text : ''
   const jsonStr = text.includes('{') ? text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1) : text
   return JSON.parse(jsonStr).recommendations ?? []
@@ -229,11 +251,10 @@ export async function POST(req: NextRequest) {
   await supabase.from('rooms').update({ status: 'recommending' }).eq('code', room_code)
 
   try {
-    const { data: participants, error: pErr } = await supabase
-      .from('participants')
-      .select('*')
-      .eq('room_code', room_code)
-      .eq('completed', true)
+    const [{ data: roomData }, { data: participants, error: pErr }] = await Promise.all([
+      supabase.from('rooms').select('location').eq('code', room_code).single(),
+      supabase.from('participants').select('*').eq('room_code', room_code).eq('completed', true),
+    ])
 
     if (pErr) throw pErr
     if (!participants?.length) {
@@ -241,26 +262,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '참여자가 없습니다' }, { status: 400 })
     }
 
-    const withLoc = participants.filter(p => p.lat && p.lng)
-    const lat = withLoc.length > 0 ? withLoc.reduce((s, p) => s + p.lat, 0) / withLoc.length : 37.5665
-    const lng = withLoc.length > 0 ? withLoc.reduce((s, p) => s + p.lng, 0) / withLoc.length : 126.9780
+    const location = roomData?.location ?? ''
+    const rawRestaurants = await searchKakao(location, 37.5665, 126.9780)
 
-    const rawRestaurants = await searchKakao(lat, lng)
+    // 전체 제한 목록
+    const allCantEat = [...new Set(participants.flatMap(p => p.cant_eat ?? []))]
 
-    // Claude API 키 있으면 AI 추천, 없으면 규칙 기반으로 자동 전환
-    let recs: { name: string; matchCount: number; reason: string }[] = []
+    // Claude or 규칙 기반
+    let recs: { name: string; matchCount: number; reason: string; menus: string[] }[] = []
     if (process.env.ANTHROPIC_API_KEY) {
       try {
-        recs = await claudeRecommend(participants, rawRestaurants)
+        recs = await claudeRecommend(participants, rawRestaurants, location)
       } catch {
-        recs = ruleBased(participants, rawRestaurants)
+        recs = ruleBased(participants, rawRestaurants, allCantEat)
       }
     } else {
-      recs = ruleBased(participants, rawRestaurants)
+      recs = ruleBased(participants, rawRestaurants, allCantEat)
     }
 
-    const recommendations: Restaurant[] = recs.slice(0, 3).map(rec => {
+    const recommendations: Restaurant[] = recs.slice(0, 5).map(rec => {
       const raw = rawRestaurants.find(r => r.name === rec.name) ?? rawRestaurants[0]
+      const menus = rec.menus?.length ? rec.menus : pickMenus(raw?.category ?? '한식', allCantEat)
       return {
         name: rec.name,
         distance: raw?.distance ?? '?',
@@ -268,6 +290,7 @@ export async function POST(req: NextRequest) {
         matchCount: Math.min(rec.matchCount, participants.length),
         totalCount: participants.length,
         reason: rec.reason ?? '근처 맛집이에요',
+        menus,
         address: raw?.address ?? '',
         phone: raw?.phone ?? '',
         url: raw?.url ?? '',
@@ -276,15 +299,16 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    // 3개 미만이면 채우기
+    // 5개 미만 채우기
     const usedNames = new Set(recommendations.map(r => r.name))
     for (const raw of rawRestaurants) {
-      if (recommendations.length >= 3) break
+      if (recommendations.length >= 5) break
       if (usedNames.has(raw.name)) continue
       recommendations.push({
         name: raw.name, distance: raw.distance, category: raw.category,
         matchCount: participants.length, totalCount: participants.length,
-        reason: REASON_MAP[raw.category] ?? '근처 맛집이에요',
+        reason: '근처 맛집이에요',
+        menus: pickMenus(raw.category, allCantEat),
         address: raw.address, phone: raw.phone, url: raw.url,
         lat: raw.lat, lng: raw.lng,
       })

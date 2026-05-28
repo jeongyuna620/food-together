@@ -60,10 +60,7 @@ export default function ResultsPage() {
   const handleVote = async (restaurantName: string, vote: 'ok' | 'no') => {
     if (!myName) return
     setMyVotes(prev => ({ ...prev, [restaurantName]: vote }))
-
-    const existing = votes.find(
-      v => v.participant_name === myName && v.restaurant_name === restaurantName
-    )
+    const existing = votes.find(v => v.participant_name === myName && v.restaurant_name === restaurantName)
     if (existing) {
       await supabase.from('votes').update({ vote }).eq('id', existing.id)
     } else {
@@ -91,7 +88,7 @@ export default function ResultsPage() {
       {/* 헤더 */}
       <div className="bg-orange-500 text-white py-5 px-4 text-center">
         <p className="text-2xl mb-1">🎉</p>
-        <h1 className="text-xl font-black">AI 추천 결과</h1>
+        <h1 className="text-xl font-black">추천 결과</h1>
         <p className="text-orange-100 text-sm mt-1">마음에 드는 곳에 OK를 눌러주세요</p>
       </div>
 
@@ -103,12 +100,10 @@ export default function ResultsPage() {
               <span className="text-xl">👑</span>
               <span className="font-bold text-sm">현재 1위</span>
             </div>
-            <p className="text-xl font-black mb-1">{winner.name}</p>
-            <p className="text-yellow-100 text-sm mb-3">OK {winnerOk}표</p>
+            <p className="text-xl font-black mb-0.5">{winner.name}</p>
+            <p className="text-yellow-100 text-sm mb-3">OK {winnerOk}표 · {winner.category}</p>
             <a
-              href={kakaoMapLink(winner)}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={kakaoMapLink(winner)} target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 bg-white text-orange-500 font-bold px-4 py-2 rounded-xl text-sm shadow-sm"
             >
               🗺️ 카카오맵 길찾기
@@ -124,79 +119,91 @@ export default function ResultsPage() {
           const totalVoters = ok + no
 
           return (
-            <article key={r.name} className="bg-white rounded-2xl p-4 shadow-sm">
-              {/* 상단 정보 */}
-              <div className="flex items-start gap-2 mb-3">
-                <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-orange-500 font-black text-sm">#{i + 1}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-base leading-tight">{r.name}</h3>
-                  <p className="text-gray-400 text-xs mt-0.5">{r.category} · {formatDistance(r.distance)}</p>
-                  {r.address && <p className="text-gray-400 text-xs mt-0.5 truncate">{r.address}</p>}
-                </div>
-                <div className="flex-shrink-0 text-right">
-                  <p className="text-orange-500 font-bold text-sm">{r.matchCount}/{r.totalCount}명</p>
-                  <p className="text-gray-400 text-xs">조건 충족</p>
-                </div>
-              </div>
-
-              {/* AI 추천 이유 */}
-              <div className="bg-orange-50 rounded-xl px-3 py-2.5 mb-3">
-                <p className="text-sm text-gray-700">
-                  <span className="text-orange-400 font-bold">AI </span>{r.reason}
-                </p>
-              </div>
-
-              {/* 투표 현황 바 */}
-              {totalVoters > 0 && (
-                <div className="mb-3">
-                  <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-                    <div
-                      className="h-full bg-green-400 rounded-full transition-all duration-500"
-                      style={{ width: `${(ok / totalVoters) * 100}%` }}
-                    />
+            <article key={r.name} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+              {/* 상단 */}
+              <div className="p-4">
+                <div className="flex items-start gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-orange-500 font-black text-sm">#{i + 1}</span>
                   </div>
-                  <div className="flex justify-between mt-1">
-                    <span className="text-xs text-green-500 font-medium">OK {ok}</span>
-                    <span className="text-xs text-red-400 font-medium">NO {no}</span>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-base leading-tight">{r.name}</h3>
+                    <p className="text-gray-400 text-xs mt-0.5">
+                      {r.category} · {formatDistance(r.distance)}
+                    </p>
+                    {r.address && <p className="text-gray-400 text-xs mt-0.5 truncate">{r.address}</p>}
+                  </div>
+                  <div className="flex-shrink-0 text-right">
+                    <p className="text-orange-500 font-bold text-sm">{r.matchCount}/{r.totalCount}명</p>
+                    <p className="text-gray-400 text-xs">조건 충족</p>
                   </div>
                 </div>
-              )}
 
-              {/* 투표 버튼 */}
-              <div className="flex gap-2 mb-2">
-                <button
-                  onClick={() => handleVote(r.name, 'ok')}
-                  className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all active:scale-95 ${
-                    myVote === 'ok'
-                      ? 'bg-green-500 text-white shadow-md'
-                      : 'bg-gray-100 text-gray-600 hover:bg-green-50'
-                  }`}
+                {/* AI 추천 이유 */}
+                <div className="bg-orange-50 rounded-xl px-3 py-2 mb-3">
+                  <p className="text-sm text-gray-700">
+                    <span className="text-orange-400 font-bold mr-1">추천</span>{r.reason}
+                  </p>
+                </div>
+
+                {/* 추천 메뉴 */}
+                {r.menus && r.menus.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-xs font-semibold text-gray-500 mb-1.5">추천 메뉴</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {r.menus.map((menu, mi) => (
+                        <span key={mi}
+                          className="bg-gray-100 text-gray-700 text-xs font-medium px-2.5 py-1 rounded-full">
+                          {menu}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 투표 바 */}
+                {totalVoters > 0 && (
+                  <div className="mb-3">
+                    <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                      <div
+                        className="h-full bg-green-400 rounded-full transition-all duration-500"
+                        style={{ width: `${(ok / totalVoters) * 100}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between mt-1">
+                      <span className="text-xs text-green-500 font-medium">OK {ok}</span>
+                      <span className="text-xs text-red-400 font-medium">NO {no}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* 투표 버튼 */}
+                <div className="flex gap-2 mb-2">
+                  <button
+                    onClick={() => handleVote(r.name, 'ok')}
+                    className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all active:scale-95 ${
+                      myVote === 'ok' ? 'bg-green-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-green-50'
+                    }`}
+                  >
+                    👍 OK{ok > 0 ? ` (${ok})` : ''}
+                  </button>
+                  <button
+                    onClick={() => handleVote(r.name, 'no')}
+                    className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all active:scale-95 ${
+                      myVote === 'no' ? 'bg-red-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-red-50'
+                    }`}
+                  >
+                    👎 NO{no > 0 ? ` (${no})` : ''}
+                  </button>
+                </div>
+
+                <a
+                  href={kakaoMapLink(r)} target="_blank" rel="noopener noreferrer"
+                  className="block text-center text-xs text-blue-400 underline"
                 >
-                  👍 OK{ok > 0 ? ` (${ok})` : ''}
-                </button>
-                <button
-                  onClick={() => handleVote(r.name, 'no')}
-                  className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all active:scale-95 ${
-                    myVote === 'no'
-                      ? 'bg-red-500 text-white shadow-md'
-                      : 'bg-gray-100 text-gray-600 hover:bg-red-50'
-                  }`}
-                >
-                  👎 NO{no > 0 ? ` (${no})` : ''}
-                </button>
+                  지도에서 보기
+                </a>
               </div>
-
-              {/* 지도 링크 */}
-              <a
-                href={kakaoMapLink(r)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block text-center text-xs text-blue-400 underline mt-1"
-              >
-                지도에서 보기
-              </a>
             </article>
           )
         })}
