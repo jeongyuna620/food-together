@@ -86,9 +86,9 @@ interface KakaoDoc {
   distance: string; phone: string; place_url: string; x: string; y: string
 }
 
-async function searchKakao(lat: number, lng: number, locationText: string): Promise<RawRestaurant[]> {
+async function searchKakao(lat: number, lng: number, locationText: string): Promise<{ restaurants: RawRestaurant[]; isDummy: boolean }> {
   const key = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY
-  if (!key) return dummyRestaurants(locationText)
+  if (!key) return { restaurants: dummyRestaurants(locationText), isDummy: true }
 
   try {
     const hasGps = lat !== 37.5665 || lng !== 126.9780
@@ -97,12 +97,13 @@ async function searchKakao(lat: number, lng: number, locationText: string): Prom
 
     if (useKeyword) {
       const base = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent((locationText || '서울') + ' 음식점')}&size=15`
-      const [r1, r2] = await Promise.all([
+      const [r1, r2, r3] = await Promise.all([
         fetch(`${base}&page=1`, { headers: { Authorization: `KakaoAK ${key}` } }),
         fetch(`${base}&page=2`, { headers: { Authorization: `KakaoAK ${key}` } }),
+        fetch(`${base}&page=3`, { headers: { Authorization: `KakaoAK ${key}` } }),
       ])
-      const [d1, d2] = await Promise.all([r1.json(), r2.json()])
-      allDocs = [...(d1.documents ?? []), ...(d2.documents ?? [])]
+      const [d1, d2, d3] = await Promise.all([r1.json(), r2.json(), r3.json()])
+      allDocs = [...(d1.documents ?? []), ...(d2.documents ?? []), ...(d3.documents ?? [])]
     } else {
       const r = await fetch(
         `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=FD6&x=${lng}&y=${lat}&radius=1000&sort=distance&size=15`,
@@ -112,10 +113,10 @@ async function searchKakao(lat: number, lng: number, locationText: string): Prom
       allDocs = d.documents ?? []
     }
 
-    if (!allDocs.length) return dummyRestaurants(locationText)
+    if (!allDocs.length) return { restaurants: dummyRestaurants(locationText), isDummy: true }
 
     const seen = new Set<string>()
-    return allDocs
+    const restaurants = allDocs
       .filter(d => { if (seen.has(d.place_name)) return false; seen.add(d.place_name); return true })
       .map(d => ({
         name: d.place_name,
@@ -127,8 +128,9 @@ async function searchKakao(lat: number, lng: number, locationText: string): Prom
         lat: parseFloat(d.y),
         lng: parseFloat(d.x),
       }))
+    return { restaurants, isDummy: false }
   } catch {
-    return dummyRestaurants(locationText)
+    return { restaurants: dummyRestaurants(locationText), isDummy: true }
   }
 }
 
@@ -229,7 +231,7 @@ export async function POST(req: NextRequest) {
       ? withGps.reduce((s: number, p: ParticipantRow) => s + (p.lng ?? 0), 0) / withGps.length
       : 126.9780
 
-    const rawRestaurants = await searchKakao(lat, lng, locationText)
+    const { restaurants: rawRestaurants, isDummy } = await searchKakao(lat, lng, locationText)
     const allCantEat = Array.from(new Set(participants.flatMap((p: { cant_eat?: string[] }) => p.cant_eat ?? [])))
     const recommendations = groupByCategory(participants, rawRestaurants, allCantEat)
 
@@ -237,7 +239,7 @@ export async function POST(req: NextRequest) {
       .from('rooms').update({ recommendations, status: 'results' }).eq('code', room_code)
     if (uErr) throw uErr
 
-    return NextResponse.json({ recommendations })
+    return NextResponse.json({ recommendations, isDummy })
   } catch (e: unknown) {
     console.error('Recommend error:', e)
     await supabase.from('rooms').update({ status: 'waiting' }).eq('code', room_code)

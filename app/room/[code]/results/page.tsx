@@ -116,6 +116,16 @@ export default function ResultsPage() {
       </div>
 
       <div className="max-w-md mx-auto px-4 pt-5 space-y-3">
+        {/* 더미 데이터 경고 (카카오 API 키 없을 때) */}
+        {groups.length > 0 && groups.every(g => g.restaurants.every(r => !r.url)) && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4">
+            <p className="text-yellow-800 text-sm font-semibold mb-1">⚠️ 샘플 데이터가 표시되고 있어요</p>
+            <p className="text-yellow-700 text-xs">
+              Vercel 환경변수에 <code className="bg-yellow-100 px-1 rounded">NEXT_PUBLIC_KAKAO_MAP_KEY</code>를 설정하면 실제 주변 식당이 표시돼요.
+            </p>
+          </div>
+        )}
+
         {/* 현재 1위 배너 */}
         {winnerEntry && winnerGroup && (
           <div className="bg-gradient-to-r from-yellow-400 to-orange-400 rounded-2xl p-4 text-white shadow-md">
