@@ -74,11 +74,12 @@ async function searchKakao(
   if (!key) return dummyRestaurants(locationText)
 
   try {
-    // GPS 좌표가 있으면 반경 검색, 없으면 키워드 검색
+    // 약속 장소 텍스트가 있으면 키워드 검색 우선, 없을 때만 GPS 좌표 검색
     const hasGps = lat !== 37.5665 || lng !== 126.9780
-    const url = hasGps
-      ? `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=FD6&x=${lng}&y=${lat}&radius=1000&sort=distance&size=15`
-      : `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent((locationText || '서울') + ' 맛집')}&size=15`
+    const useKeyword = !!locationText || !hasGps
+    const url = useKeyword
+      ? `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent((locationText || '서울') + ' 음식점')}&size=15`
+      : `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=FD6&x=${lng}&y=${lat}&radius=1000&sort=distance&size=15`
 
     const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } })
     if (!res.ok) return dummyRestaurants(locationText)
@@ -89,7 +90,7 @@ async function searchKakao(
       name: d.place_name,
       address: d.address_name,
       category: d.category_name.split('>').pop()?.trim() ?? d.category_name,
-      distance: d.distance || '500',
+      distance: d.distance || '',
       phone: d.phone, url: d.place_url,
       lat: parseFloat(d.y), lng: parseFloat(d.x),
     }))
