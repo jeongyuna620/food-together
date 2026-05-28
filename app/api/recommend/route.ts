@@ -247,7 +247,7 @@ export async function POST(req: NextRequest) {
       : 126.9780
 
     const rawRestaurants = await searchKakao(lat, lng, locationText)
-    const allCantEat = [...new Set(participants.flatMap(p => p.cant_eat ?? []))]
+    const allCantEat = Array.from(new Set(participants.flatMap((p: { cant_eat?: string[] }) => p.cant_eat ?? [])))
 
     let recs: { name: string; matchCount: number; reason: string; menus: string[] }[] = []
     if (process.env.ANTHROPIC_API_KEY) {
