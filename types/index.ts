@@ -3,7 +3,7 @@ export interface Room {
   host_name: string
   location: string
   status: 'waiting' | 'recommending' | 'results'
-  recommendations: Restaurant[] | null
+  recommendations: CategoryRecommendation[] | null
   created_at: string
 }
 
@@ -29,17 +29,20 @@ export interface Vote {
   created_at: string
 }
 
-export interface Restaurant {
+export interface RestaurantItem {
   name: string
-  distance: string
-  category: string
-  matchCount: number
-  totalCount: number
-  reason: string
-  menus: string[]
   address: string
+  distance: string
   phone?: string
   url?: string
   lat?: number
   lng?: number
+}
+
+export interface CategoryRecommendation {
+  category: string
+  menus: string[]
+  matchCount: number
+  totalCount: number
+  restaurants: RestaurantItem[]
 }
