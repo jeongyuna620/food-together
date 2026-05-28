@@ -68,8 +68,14 @@ export default function ResultsPage() {
     }
   }
 
-  const kakaoMapLink = (r: Restaurant) => {
+  // 장소 정보 페이지 (place_url 우선, 없으면 이름 검색)
+  const kakaoPlaceLink = (r: Restaurant) => {
     if (r.url) return r.url
+    return `https://map.kakao.com/?q=${encodeURIComponent(r.name)}`
+  }
+
+  // 길찾기 전용 (1위 배너 버튼)
+  const kakaoNavLink = (r: Restaurant) => {
     if (r.lat && r.lng)
       return `https://map.kakao.com/link/to/${encodeURIComponent(r.name)},${r.lat},${r.lng}`
     return `https://map.kakao.com/?q=${encodeURIComponent(r.name)}`
@@ -104,7 +110,7 @@ export default function ResultsPage() {
             <p className="text-xl font-black mb-0.5">{winner.name}</p>
             <p className="text-yellow-100 text-sm mb-3">OK {winnerOk}표 · {winner.category}</p>
             <a
-              href={kakaoMapLink(winner)} target="_blank" rel="noopener noreferrer"
+              href={kakaoNavLink(winner)} target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 bg-white text-orange-500 font-bold px-4 py-2 rounded-xl text-sm shadow-sm"
             >
               🗺️ 카카오맵 길찾기
@@ -199,7 +205,7 @@ export default function ResultsPage() {
                 </div>
 
                 <a
-                  href={kakaoMapLink(r)} target="_blank" rel="noopener noreferrer"
+                  href={kakaoPlaceLink(r)} target="_blank" rel="noopener noreferrer"
                   className="block text-center text-xs text-blue-400 underline"
                 >
                   지도에서 보기
