@@ -39,10 +39,14 @@ export interface RestaurantItem {
   lng?: number
 }
 
+export interface MenuRecommendation {
+  name: string
+  restaurants: RestaurantItem[]
+}
+
 export interface CategoryRecommendation {
   category: string
-  menus: string[]
+  menus: MenuRecommendation[]
   matchCount: number
   totalCount: number
-  restaurants: RestaurantItem[]
 }

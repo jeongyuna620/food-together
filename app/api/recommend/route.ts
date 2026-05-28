@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { CANT_EAT_LABELS, DONT_WANT_LABELS, BUDGET_LABELS } from '@/lib/utils'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,29 +15,29 @@ interface ParticipantRow {
   lng: number | null
 }
 
-interface RawRestaurant {
+interface KakaoDoc {
+  place_name: string; address_name: string; category_name: string
+  distance: string; phone: string; place_url: string; x: string; y: string
+}
+
+interface RestaurantItem {
+  name: string; address: string; distance: string
+  phone?: string; url?: string; lat?: number; lng?: number
+}
+
+interface MenuRecommendation {
   name: string
-  address: string
-  category: string
-  distance: string
-  phone: string
-  url: string
-  lat: number
-  lng: number
+  restaurants: RestaurantItem[]
 }
 
 interface CategoryRecommendation {
   category: string
-  menus: string[]
+  menus: MenuRecommendation[]
   matchCount: number
   totalCount: number
-  restaurants: {
-    name: string; address: string; distance: string
-    phone: string; url: string; lat: number; lng: number
-  }[]
 }
 
-// ─── 카테고리별 추천 메뉴 ────────────────────────────────────────────────────
+// ─── 카테고리별 메뉴 ────────────────────────────────────────────────────────────
 const CATEGORY_MENUS: Record<string, string[]> = {
   한식:       ['된장찌개', '제육볶음', '비빔밥', '순두부찌개', '삼겹살', '갈비탕', '불고기', '칼국수'],
   일식:       ['라멘', '돈카츠', '우동', '규동', '오야코동', '스시', '나베', '소바'],
@@ -62,150 +61,57 @@ const RESTRICT_MENU_AVOID: Record<string, string[]> = {
   gluten:     ['라멘', '우동', '소바', '짜장면', '짬뽕'],
 }
 
-function pickMenus(category: string, cantEat: string[], count = 4): string[] {
-  const all = CATEGORY_MENUS[category] ?? ['다양한 메뉴']
-  const avoid = cantEat.flatMap(r => RESTRICT_MENU_AVOID[r] ?? [])
-  const filtered = all.filter(m => !avoid.some(a => m.includes(a)))
-  return (filtered.length > 0 ? filtered : all).slice(0, count)
-}
-
-// ─── 카카오 카테고리 정규화 (허용 카테고리 외 필터) ─────────────────────────
-const ALLOWED_CATEGORIES = new Set(['한식', '중식', '일식', '양식', '분식', '치킨', '패스트푸드', '요리주점'])
-
-function normalizeCategory(rawCategory: string): string {
-  if (/중국|중식/.test(rawCategory)) return '중식'
-  if (/일식|일본|초밥|라멘|우동|돈카츠|사시미/.test(rawCategory)) return '일식'
-  if (/양식|이탈리안|패밀리레스토랑|피자|파스타|스테이크/.test(rawCategory)) return '양식'
-  if (/분식|떡볶이/.test(rawCategory)) return '분식'
-  if (/치킨/.test(rawCategory)) return '치킨'
-  if (/패스트푸드|햄버거/.test(rawCategory)) return '패스트푸드'
-  if (/요리주점|이자카야|호프|선술집|포장마차/.test(rawCategory)) return '요리주점'
-  if (/한식|한정식|국밥|해장국|삼겹살|갈비|설렁탕|백반|구이전문|찌개|냉면/.test(rawCategory)) return '한식'
-  return '기타'
-}
-
-// ─── Kakao 식당 검색 (2페이지, 최대 30개) ────────────────────────────────────
-interface KakaoDoc {
-  place_name: string; address_name: string; category_name: string
-  distance: string; phone: string; place_url: string; x: string; y: string
-}
-
-async function searchKakao(lat: number, lng: number, locationText: string): Promise<{ restaurants: RawRestaurant[]; isDummy: boolean }> {
-  const key = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY
-  if (!key) return { restaurants: dummyRestaurants(locationText), isDummy: true }
-
-  try {
-    const hasGps = lat !== 37.5665 || lng !== 126.9780
-    const useKeyword = !!locationText || !hasGps
-    let allDocs: KakaoDoc[] = []
-
-    if (useKeyword) {
-      const base = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent((locationText || '서울') + ' 음식점')}&size=15`
-      const [r1, r2, r3] = await Promise.all([
-        fetch(`${base}&page=1`, { headers: { Authorization: `KakaoAK ${key}` } }),
-        fetch(`${base}&page=2`, { headers: { Authorization: `KakaoAK ${key}` } }),
-        fetch(`${base}&page=3`, { headers: { Authorization: `KakaoAK ${key}` } }),
-      ])
-      const [d1, d2, d3] = await Promise.all([r1.json(), r2.json(), r3.json()])
-      allDocs = [...(d1.documents ?? []), ...(d2.documents ?? []), ...(d3.documents ?? [])]
-    } else {
-      const r = await fetch(
-        `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=FD6&x=${lng}&y=${lat}&radius=1000&sort=distance&size=15`,
-        { headers: { Authorization: `KakaoAK ${key}` } }
-      )
-      const d = await r.json()
-      allDocs = d.documents ?? []
-    }
-
-    if (!allDocs.length) return { restaurants: dummyRestaurants(locationText), isDummy: true }
-
-    const seen = new Set<string>()
-    const restaurants = allDocs
-      .filter(d => { if (seen.has(d.place_name)) return false; seen.add(d.place_name); return true })
-      .map(d => ({
-        name: d.place_name,
-        address: d.address_name,
-        category: normalizeCategory(d.category_name),
-        distance: d.distance || '',
-        phone: d.phone,
-        url: d.place_url,
-        lat: parseFloat(d.y),
-        lng: parseFloat(d.x),
-      }))
-    return { restaurants, isDummy: false }
-  } catch {
-    return { restaurants: dummyRestaurants(locationText), isDummy: true }
-  }
-}
-
-function dummyRestaurants(location: string): RawRestaurant[] {
-  const area = location || '근처'
-  const b = { phone: '', url: '', lat: 37.5665, lng: 126.9780 }
-  return [
-    { name: '진이찬방',    address: area, category: '한식',       distance: '150', ...b },
-    { name: '연세칼국수',  address: area, category: '한식',       distance: '280', ...b },
-    { name: '스시히로',    address: area, category: '일식',       distance: '220', ...b },
-    { name: '멘야마루',    address: area, category: '일식',       distance: '450', ...b },
-    { name: '홍콩반점',    address: area, category: '중식',       distance: '310', ...b },
-    { name: '파스타베네',  address: area, category: '양식',       distance: '400', ...b },
-    { name: '한촌설렁탕',  address: area, category: '한식',       distance: '480', ...b },
-    { name: '마루초밥',    address: area, category: '일식',       distance: '540', ...b },
-    { name: '엽기떡볶이',  address: area, category: '분식',       distance: '600', ...b },
-    { name: '굽네치킨',    address: area, category: '치킨',       distance: '650', ...b },
-    { name: '본죽&비빔밥', address: area, category: '한식',       distance: '720', ...b },
-    { name: '맥도날드',    address: area, category: '패스트푸드', distance: '800', ...b },
-  ]
-}
-
-// ─── 카테고리별 그룹핑 ───────────────────────────────────────────────────────
 const DISLIKE_TO_CATEGORY: Record<string, string[]> = {
   korean: ['한식'], chinese: ['중식'], japanese: ['일식'],
   western: ['양식'], bunsik: ['분식'], meat: ['치킨'], fastfood: ['패스트푸드'],
 }
 
-function groupByCategory(
-  participants: ParticipantRow[],
-  restaurants: RawRestaurant[],
-  allCantEat: string[]
-): CategoryRecommendation[] {
-  const byCategory: Record<string, RawRestaurant[]> = {}
-  for (const r of restaurants) {
-    const cat = r.category || '기타'
-    if (!byCategory[cat]) byCategory[cat] = []
-    byCategory[cat].push(r)
-  }
+function pickMenus(category: string, cantEat: string[]): string[] {
+  const all = CATEGORY_MENUS[category] ?? ['다양한 메뉴']
+  const avoid = cantEat.flatMap(r => RESTRICT_MENU_AVOID[r] ?? [])
+  const filtered = all.filter(m => !avoid.some(a => m.includes(a)))
+  return filtered.length > 0 ? filtered : all
+}
 
-  const result: CategoryRecommendation[] = []
-  for (const [category, rests] of Object.entries(byCategory)) {
-    if (!ALLOWED_CATEGORIES.has(category)) continue
-    const matchCount = participants.filter(p =>
-      !(p.dont_want ?? []).some(d => (DISLIKE_TO_CATEGORY[d] ?? []).includes(category))
-    ).length
+// ─── 메뉴별 카카오 키워드 검색 ────────────────────────────────────────────────
+async function searchMenuRestaurants(key: string, query: string): Promise<RestaurantItem[]> {
+  try {
+    const res = await fetch(
+      `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=10`,
+      { headers: { Authorization: `KakaoAK ${key}` } }
+    )
+    const data = await res.json()
+    return (data.documents ?? []).map((d: KakaoDoc) => ({
+      name: d.place_name,
+      address: d.address_name,
+      distance: d.distance || '',
+      phone: d.phone,
+      url: d.place_url,
+      lat: parseFloat(d.y),
+      lng: parseFloat(d.x),
+    }))
+  } catch { return [] }
+}
 
-    const sorted = [...rests].sort((a, b) => {
-      const da = parseInt(a.distance) || 0
-      const db = parseInt(b.distance) || 0
-      return da !== db ? da - db : Math.random() - 0.5
-    })
-
-    result.push({
-      category,
-      menus: pickMenus(category, allCantEat, 4),
-      matchCount,
-      totalCount: participants.length,
-      restaurants: sorted.map(r => ({
-        name: r.name, address: r.address, distance: r.distance,
-        phone: r.phone, url: r.url, lat: r.lat, lng: r.lng,
-      })),
-    })
-  }
-
-  result.sort((a, b) =>
-    b.matchCount !== a.matchCount ? b.matchCount - a.matchCount :
-    b.restaurants.length - a.restaurants.length
-  )
-
-  return result
+// ─── 더미 데이터 (API 키 없을 때) ─────────────────────────────────────────────
+const DUMMY_BY_CATEGORY: Record<string, RestaurantItem[]> = {
+  한식: [
+    { name: '진이찬방',    address: '근처', distance: '150', phone: '', url: '', lat: 37.5665, lng: 126.9780 },
+    { name: '연세칼국수',  address: '근처', distance: '280', phone: '', url: '', lat: 37.5665, lng: 126.9780 },
+    { name: '한촌설렁탕',  address: '근처', distance: '480', phone: '', url: '', lat: 37.5665, lng: 126.9780 },
+    { name: '본죽&비빔밥', address: '근처', distance: '720', phone: '', url: '', lat: 37.5665, lng: 126.9780 },
+  ],
+  일식: [
+    { name: '스시히로', address: '근처', distance: '220', phone: '', url: '', lat: 37.5665, lng: 126.9780 },
+    { name: '멘야마루', address: '근처', distance: '450', phone: '', url: '', lat: 37.5665, lng: 126.9780 },
+    { name: '마루초밥', address: '근처', distance: '540', phone: '', url: '', lat: 37.5665, lng: 126.9780 },
+  ],
+  중식:       [{ name: '홍콩반점',   address: '근처', distance: '310', phone: '', url: '', lat: 37.5665, lng: 126.9780 }],
+  양식:       [{ name: '파스타베네', address: '근처', distance: '400', phone: '', url: '', lat: 37.5665, lng: 126.9780 }],
+  분식:       [{ name: '엽기떡볶이', address: '근처', distance: '600', phone: '', url: '', lat: 37.5665, lng: 126.9780 }],
+  치킨:       [{ name: '굽네치킨',   address: '근처', distance: '650', phone: '', url: '', lat: 37.5665, lng: 126.9780 }],
+  패스트푸드: [{ name: '맥도날드',   address: '근처', distance: '800', phone: '', url: '', lat: 37.5665, lng: 126.9780 }],
+  요리주점:   [{ name: '맛있는주점', address: '근처', distance: '500', phone: '', url: '', lat: 37.5665, lng: 126.9780 }],
 }
 
 // ─── API Route ──────────────────────────────────────────────────────────────
@@ -228,17 +134,54 @@ export async function POST(req: NextRequest) {
     }
 
     const locationText = roomData?.location ?? ''
-    const withGps = participants.filter(p => p.lat && p.lng)
-    const lat = withGps.length > 0
-      ? withGps.reduce((s: number, p: ParticipantRow) => s + (p.lat ?? 0), 0) / withGps.length
-      : 37.5665
-    const lng = withGps.length > 0
-      ? withGps.reduce((s: number, p: ParticipantRow) => s + (p.lng ?? 0), 0) / withGps.length
-      : 126.9780
-
-    const { restaurants: rawRestaurants, isDummy } = await searchKakao(lat, lng, locationText)
     const allCantEat = Array.from(new Set(participants.flatMap((p: { cant_eat?: string[] }) => p.cant_eat ?? [])))
-    const recommendations = groupByCategory(participants, rawRestaurants, allCantEat)
+    const key = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY
+
+    // 카테고리별 메뉴 검색 태스크 생성
+    type SearchTask = { category: string; menu: string }
+    const tasks: SearchTask[] = []
+    for (const category of Object.keys(CATEGORY_MENUS)) {
+      const menus = pickMenus(category, allCantEat)
+      for (const menu of menus) {
+        tasks.push({ category, menu })
+      }
+    }
+
+    let isDummy = false
+    let menuResults: RestaurantItem[][]
+
+    if (key) {
+      // 메뉴별 병렬 검색 ("신촌 된장찌개", "신촌 제육볶음", ...)
+      menuResults = await Promise.all(
+        tasks.map(t =>
+          searchMenuRestaurants(key, locationText ? `${locationText} ${t.menu}` : t.menu)
+        )
+      )
+    } else {
+      isDummy = true
+      menuResults = tasks.map(t => DUMMY_BY_CATEGORY[t.category] ?? [])
+    }
+
+    // 결과를 CategoryRecommendation[] 형태로 조립
+    const categoryMap: Record<string, MenuRecommendation[]> = {}
+    tasks.forEach((task, i) => {
+      if (!categoryMap[task.category]) categoryMap[task.category] = []
+      categoryMap[task.category].push({ name: task.menu, restaurants: menuResults[i] })
+    })
+
+    const recommendations: CategoryRecommendation[] = Object.entries(categoryMap)
+      .map(([category, menus]) => ({
+        category,
+        menus,
+        matchCount: participants.filter((p: ParticipantRow) =>
+          !(p.dont_want ?? []).some((d: string) => (DISLIKE_TO_CATEGORY[d] ?? []).includes(category))
+        ).length,
+        totalCount: participants.length,
+      }))
+      .sort((a, b) =>
+        b.matchCount !== a.matchCount ? b.matchCount - a.matchCount :
+        b.menus.flatMap(m => m.restaurants).length - a.menus.flatMap(m => m.restaurants).length
+      )
 
     const { error: uErr } = await supabase
       .from('rooms').update({ recommendations, status: 'results' }).eq('code', room_code)
