@@ -14,9 +14,8 @@ export interface Participant {
   cant_eat: string[]
   dont_want: string[]
   budget: string
-  spicy: string    // 'no' | 'normal' | 'yes'
-  mood: string     // 'quick' | 'relaxed' | 'any'
-  craving: string  // 'korean' | 'chinese' | 'japanese' | 'western' | 'bunsik' | ''
+  lat: number | null
+  lng: number | null
   completed: boolean
   created_at: string
 }

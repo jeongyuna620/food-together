@@ -3,11 +3,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import {
-  CANT_EAT_OPTIONS, DONT_WANT_OPTIONS, BUDGET_OPTIONS,
-  SPICY_OPTIONS, MOOD_OPTIONS, CRAVING_OPTIONS,
-} from '@/lib/utils'
+import { CANT_EAT_OPTIONS, DONT_WANT_OPTIONS, BUDGET_OPTIONS } from '@/lib/utils'
 import type { Room } from '@/types'
+
+type GpsStatus = 'idle' | 'loading' | 'done' | 'error'
 
 export default function RoomPage() {
   const params = useParams()
@@ -17,23 +16,20 @@ export default function RoomPage() {
   const [roomStatus, setRoomStatus] = useState<'loading' | 'notfound' | 'ok'>('loading')
   const [room, setRoom] = useState<Room | null>(null)
 
+  // 폼 상태
   const [name, setName] = useState('')
   const [cantEat, setCantEat] = useState<string[]>([])
   const [dontWant, setDontWant] = useState<string[]>([])
   const [budget, setBudget] = useState('')
-  const [spicy, setSpicy] = useState('normal')
-  const [mood, setMood] = useState('any')
-  const [craving, setCraving] = useState('')
+  const [gpsStatus, setGpsStatus] = useState<GpsStatus>('idle')
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
 
   const checkAndRedirect = useCallback(async () => {
     const { data: roomData } = await supabase
-      .from('rooms')
-      .select('*')
-      .eq('code', code)
-      .single()
+      .from('rooms').select('*').eq('code', code).single()
 
     if (!roomData) { setRoomStatus('notfound'); return }
     if (roomData.status === 'results') { router.replace(`/room/${code}/results`); return }
@@ -45,19 +41,24 @@ export default function RoomPage() {
     if (storedName) {
       setName(storedName)
       const { data: existing } = await supabase
-        .from('participants')
-        .select('completed')
-        .eq('room_code', code)
-        .eq('name', storedName)
-        .single()
-      if (existing?.completed) { router.replace(`/room/${code}/waiting`) }
+        .from('participants').select('completed')
+        .eq('room_code', code).eq('name', storedName).single()
+      if (existing?.completed) router.replace(`/room/${code}/waiting`)
     }
   }, [code, router])
 
   useEffect(() => { checkAndRedirect() }, [checkAndRedirect])
 
-  const toggle = (list: string[], setList: (v: string[]) => void, id: string) => {
+  const toggle = (list: string[], setList: (v: string[]) => void, id: string) =>
     setList(list.includes(id) ? list.filter(x => x !== id) : [...list, id])
+
+  const detectGps = () => {
+    setGpsStatus('loading')
+    navigator.geolocation.getCurrentPosition(
+      pos => { setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setGpsStatus('done') },
+      () => setGpsStatus('error'),
+      { timeout: 10000 }
+    )
   }
 
   const handleSubmit = async () => {
@@ -68,19 +69,15 @@ export default function RoomPage() {
 
     try {
       const { data: existing } = await supabase
-        .from('participants')
-        .select('id')
-        .eq('room_code', code)
-        .eq('name', name.trim())
-        .maybeSingle()
+        .from('participants').select('id')
+        .eq('room_code', code).eq('name', name.trim()).maybeSingle()
 
       const payload = {
         cant_eat: cantEat,
         dont_want: dontWant,
         budget,
-        spicy,
-        mood,
-        craving,
+        lat: location?.lat ?? null,
+        lng: location?.lng ?? null,
         completed: true,
       }
 
@@ -111,7 +108,9 @@ export default function RoomPage() {
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-6">
         <div className="text-5xl mb-4">😢</div>
         <p className="text-gray-500 text-lg font-medium">존재하지 않는 방이에요</p>
-        <button onClick={() => router.push('/')} className="mt-4 text-orange-500 underline text-sm">홈으로 가기</button>
+        <button onClick={() => router.push('/')} className="mt-4 text-orange-500 underline text-sm">
+          홈으로 가기
+        </button>
       </div>
     )
   }
@@ -140,13 +139,18 @@ export default function RoomPage() {
         {/* 못 먹는 것 */}
         <section className="bg-white rounded-2xl p-4 shadow-sm">
           <h2 className="font-bold text-base mb-1">못 먹는 것</h2>
-          <p className="text-xs text-gray-400 mb-3">해당 없으면 그냥 넘어가세요</p>
+          <p className="text-xs text-gray-400 mb-3">해당 없으면 넘어가세요</p>
           <div className="grid grid-cols-3 gap-2">
             {CANT_EAT_OPTIONS.map(opt => (
-              <button key={opt.id} onClick={() => toggle(cantEat, setCantEat, opt.id)}
+              <button
+                key={opt.id}
+                onClick={() => toggle(cantEat, setCantEat, opt.id)}
                 className={`py-2.5 px-2 rounded-xl border-2 text-sm font-medium transition-colors ${
-                  cantEat.includes(opt.id) ? 'border-red-400 bg-red-50 text-red-600' : 'border-gray-100 bg-gray-50 text-gray-600'
-                }`}>
+                  cantEat.includes(opt.id)
+                    ? 'border-red-400 bg-red-50 text-red-600'
+                    : 'border-gray-100 bg-gray-50 text-gray-600'
+                }`}
+              >
                 {cantEat.includes(opt.id) ? '✕ ' : ''}{opt.label}
               </button>
             ))}
@@ -156,60 +160,19 @@ export default function RoomPage() {
         {/* 오늘 먹기 싫은 것 */}
         <section className="bg-white rounded-2xl p-4 shadow-sm">
           <h2 className="font-bold text-base mb-1">오늘 먹기 싫은 것</h2>
-          <p className="text-xs text-gray-400 mb-3">해당 없으면 그냥 넘어가세요</p>
+          <p className="text-xs text-gray-400 mb-3">해당 없으면 넘어가세요</p>
           <div className="grid grid-cols-2 gap-2">
             {DONT_WANT_OPTIONS.map(opt => (
-              <button key={opt.id} onClick={() => toggle(dontWant, setDontWant, opt.id)}
+              <button
+                key={opt.id}
+                onClick={() => toggle(dontWant, setDontWant, opt.id)}
                 className={`py-2.5 px-2 rounded-xl border-2 text-sm font-medium transition-colors ${
-                  dontWant.includes(opt.id) ? 'border-orange-400 bg-orange-50 text-orange-600' : 'border-gray-100 bg-gray-50 text-gray-600'
-                }`}>
+                  dontWant.includes(opt.id)
+                    ? 'border-orange-400 bg-orange-50 text-orange-600'
+                    : 'border-gray-100 bg-gray-50 text-gray-600'
+                }`}
+              >
                 {dontWant.includes(opt.id) ? '✕ ' : ''}{opt.label}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {/* 오늘 땡기는 것 */}
-        <section className="bg-white rounded-2xl p-4 shadow-sm">
-          <h2 className="font-bold text-base mb-1">오늘 땡기는 것</h2>
-          <p className="text-xs text-gray-400 mb-3">있으면 골라주세요</p>
-          <div className="grid grid-cols-2 gap-2">
-            {CRAVING_OPTIONS.map(opt => (
-              <button key={opt.id} onClick={() => setCraving(opt.id)}
-                className={`py-2.5 px-2 rounded-xl border-2 text-sm font-medium transition-colors text-left ${
-                  craving === opt.id ? 'border-green-400 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-600'
-                }`}>
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {/* 매운 음식 */}
-        <section className="bg-white rounded-2xl p-4 shadow-sm">
-          <h2 className="font-bold text-base mb-3">매운 음식</h2>
-          <div className="grid grid-cols-3 gap-2">
-            {SPICY_OPTIONS.map(opt => (
-              <button key={opt.id} onClick={() => setSpicy(opt.id)}
-                className={`py-3 rounded-xl border-2 text-sm font-medium transition-colors ${
-                  spicy === opt.id ? 'border-orange-400 bg-orange-50 text-orange-700' : 'border-gray-100 bg-gray-50 text-gray-600'
-                }`}>
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {/* 식사 스타일 */}
-        <section className="bg-white rounded-2xl p-4 shadow-sm">
-          <h2 className="font-bold text-base mb-3">오늘 식사 스타일</h2>
-          <div className="space-y-2">
-            {MOOD_OPTIONS.map(opt => (
-              <button key={opt.id} onClick={() => setMood(opt.id)}
-                className={`w-full py-3 px-4 rounded-xl border-2 text-left font-medium text-sm transition-colors ${
-                  mood === opt.id ? 'border-orange-400 bg-orange-50 text-orange-700' : 'border-gray-100 bg-gray-50 text-gray-600'
-                }`}>
-                {mood === opt.id && '✓ '}{opt.label}
               </button>
             ))}
           </div>
@@ -220,24 +183,53 @@ export default function RoomPage() {
           <h2 className="font-bold text-base mb-3">예산 (1인 기준)</h2>
           <div className="space-y-2">
             {BUDGET_OPTIONS.map(opt => (
-              <button key={opt.id} onClick={() => setBudget(opt.id)}
+              <button
+                key={opt.id}
+                onClick={() => setBudget(opt.id)}
                 className={`w-full py-3 px-4 rounded-xl border-2 text-left font-medium text-sm transition-colors ${
-                  budget === opt.id ? 'border-orange-400 bg-orange-50 text-orange-700' : 'border-gray-100 bg-gray-50 text-gray-600'
-                }`}>
+                  budget === opt.id
+                    ? 'border-orange-400 bg-orange-50 text-orange-700'
+                    : 'border-gray-100 bg-gray-50 text-gray-600'
+                }`}
+              >
                 {budget === opt.id && '✓ '}{opt.label}
               </button>
             ))}
           </div>
         </section>
 
+        {/* 위치 */}
+        <section className="bg-white rounded-2xl p-4 shadow-sm">
+          <h2 className="font-bold text-base mb-1">현재 위치</h2>
+          <p className="text-xs text-gray-400 mb-3">근처 식당 검색에 사용돼요 (선택)</p>
+          <button
+            onClick={detectGps}
+            disabled={gpsStatus === 'loading' || gpsStatus === 'done'}
+            className={`w-full py-3 rounded-xl border-2 font-medium text-sm transition-colors ${
+              gpsStatus === 'done'    ? 'border-green-400 bg-green-50 text-green-700' :
+              gpsStatus === 'error'   ? 'border-gray-200 bg-gray-50 text-gray-400' :
+              gpsStatus === 'loading' ? 'border-orange-200 bg-orange-50 text-orange-400' :
+                                       'border-blue-200 bg-blue-50 text-blue-600'
+            }`}
+          >
+            {gpsStatus === 'idle'    && '📍 위치 감지하기'}
+            {gpsStatus === 'loading' && '📍 감지 중...'}
+            {gpsStatus === 'done'    && '✅ 위치 감지 완료'}
+            {gpsStatus === 'error'   && '⚠️ 감지 실패 — 계속 진행 가능'}
+          </button>
+        </section>
+
       </div>
 
-      {/* 하단 버튼 */}
+      {/* 하단 고정 버튼 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 pt-3 pb-5 shadow-lg">
         <div className="max-w-md mx-auto">
           {error && <p className="text-red-500 text-sm text-center mb-2">{error}</p>}
-          <button onClick={handleSubmit} disabled={isSubmitting}
-            className="w-full bg-orange-500 text-white text-lg font-bold py-4 rounded-2xl shadow-md active:scale-95 transition-transform disabled:opacity-50 disabled:scale-100">
+          <button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="w-full bg-orange-500 text-white text-lg font-bold py-4 rounded-2xl shadow-md active:scale-95 transition-transform disabled:opacity-50 disabled:scale-100"
+          >
             {isSubmitting ? '저장 중...' : '완료'}
           </button>
         </div>
