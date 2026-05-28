@@ -62,6 +62,17 @@ function pickMenus(category: string, cantEat: string[], count = 3): string[] {
 
 // ─── Kakao 식당 검색 ────────────────────────────────────────────────────────
 
+function normalizeCategory(rawCategory: string): string {
+  if (/중국|중식/.test(rawCategory)) return '중식'
+  if (/일식|일본|초밥|라멘|우동|돈카츠|사시미/.test(rawCategory)) return '일식'
+  if (/양식|이탈리안|패밀리레스토랑|피자|파스타|스테이크/.test(rawCategory)) return '양식'
+  if (/분식|떡볶이/.test(rawCategory)) return '분식'
+  if (/치킨/.test(rawCategory)) return '치킨'
+  if (/패스트푸드|햄버거/.test(rawCategory)) return '패스트푸드'
+  if (/한식|한정식|국밥|해장국|삼겹살|갈비|설렁탕|백반/.test(rawCategory)) return '한식'
+  return rawCategory.split('>').pop()?.trim() ?? rawCategory
+}
+
 interface KakaoDoc {
   place_name: string; address_name: string; category_name: string
   distance: string; phone: string; place_url: string; x: string; y: string
@@ -89,7 +100,7 @@ async function searchKakao(
     return (data.documents as KakaoDoc[]).map(d => ({
       name: d.place_name,
       address: d.address_name,
-      category: d.category_name.split('>').pop()?.trim() ?? d.category_name,
+      category: normalizeCategory(d.category_name),
       distance: d.distance || '',
       phone: d.phone, url: d.place_url,
       lat: parseFloat(d.y), lng: parseFloat(d.x),
@@ -137,10 +148,16 @@ function ruleBased(
   const scored = restaurants.map(r => ({
     r,
     match: calcMatchCount(r, participants),
-    dist: parseInt(r.distance) || 999,
+    dist: parseInt(r.distance) || 0,
+    rand: Math.random(),
   }))
 
-  scored.sort((a, b) => b.match !== a.match ? b.match - a.match : a.dist - b.dist)
+  // match 높은 순 → 거리 짧은 순 → 랜덤 (거리 없는 키워드 검색 결과 다양화)
+  scored.sort((a, b) =>
+    b.match !== a.match ? b.match - a.match :
+    a.dist !== b.dist   ? a.dist - b.dist   :
+    a.rand - b.rand
+  )
 
   // 카테고리 다양성 우선으로 5개 선정
   const seen = new Set<string>()
