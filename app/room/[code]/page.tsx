@@ -6,8 +6,6 @@ import { supabase } from '@/lib/supabase'
 import { CANT_EAT_OPTIONS, DONT_WANT_OPTIONS, BUDGET_OPTIONS } from '@/lib/utils'
 import type { Room } from '@/types'
 
-type GpsStatus = 'idle' | 'loading' | 'done' | 'error'
-
 export default function RoomPage() {
   const params = useParams()
   const router = useRouter()
@@ -16,15 +14,11 @@ export default function RoomPage() {
   const [roomStatus, setRoomStatus] = useState<'loading' | 'notfound' | 'ok'>('loading')
   const [room, setRoom] = useState<Room | null>(null)
 
-  // 폼 상태
   const [name, setName] = useState('')
   const [cantEat, setCantEat] = useState<string[]>([])
   const [cantEatCustom, setCantEatCustom] = useState('')
   const [dontWant, setDontWant] = useState<string[]>([])
   const [budget, setBudget] = useState('')
-  const [gpsStatus, setGpsStatus] = useState<GpsStatus>('idle')
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
-
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -53,15 +47,6 @@ export default function RoomPage() {
   const toggle = (list: string[], setList: (v: string[]) => void, id: string) =>
     setList(list.includes(id) ? list.filter(x => x !== id) : [...list, id])
 
-  const detectGps = () => {
-    setGpsStatus('loading')
-    navigator.geolocation.getCurrentPosition(
-      pos => { setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setGpsStatus('done') },
-      () => setGpsStatus('error'),
-      { timeout: 10000 }
-    )
-  }
-
   const handleSubmit = async () => {
     if (!name.trim()) { setError('이름을 입력해주세요'); return }
     if (!budget) { setError('예산을 선택해주세요'); return }
@@ -78,8 +63,8 @@ export default function RoomPage() {
         cant_eat: [...cantEat, ...customItems],
         dont_want: dontWant,
         budget,
-        lat: location?.lat ?? null,
-        lng: location?.lng ?? null,
+        lat: null,
+        lng: null,
         completed: true,
       }
 
@@ -205,27 +190,6 @@ export default function RoomPage() {
               </button>
             ))}
           </div>
-        </section>
-
-        {/* 위치 */}
-        <section className="bg-white rounded-2xl p-4 shadow-sm">
-          <h2 className="font-bold text-base mb-1">현재 위치</h2>
-          <p className="text-xs text-gray-400 mb-3">근처 식당 검색에 사용돼요 (선택)</p>
-          <button
-            onClick={detectGps}
-            disabled={gpsStatus === 'loading' || gpsStatus === 'done'}
-            className={`w-full py-3 rounded-xl border-2 font-medium text-sm transition-colors ${
-              gpsStatus === 'done'    ? 'border-green-400 bg-green-50 text-green-700' :
-              gpsStatus === 'error'   ? 'border-gray-200 bg-gray-50 text-gray-400' :
-              gpsStatus === 'loading' ? 'border-violet-200 bg-violet-50 text-violet-400' :
-                                       'border-blue-200 bg-blue-50 text-blue-600'
-            }`}
-          >
-            {gpsStatus === 'idle'    && '📍 위치 감지하기'}
-            {gpsStatus === 'loading' && '📍 감지 중...'}
-            {gpsStatus === 'done'    && '✅ 위치 감지 완료'}
-            {gpsStatus === 'error'   && '⚠️ 감지 실패 — 계속 진행 가능'}
-          </button>
         </section>
 
       </div>
