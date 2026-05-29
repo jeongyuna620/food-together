@@ -100,7 +100,7 @@ export default function RoomPage() {
   if (roomStatus === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <p className="text-orange-400 text-lg animate-pulse">로딩 중...</p>
+        <p className="text-violet-400 text-lg animate-pulse">로딩 중...</p>
       </div>
     )
   }
@@ -110,7 +110,7 @@ export default function RoomPage() {
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-6">
         <div className="text-5xl mb-4">😢</div>
         <p className="text-gray-500 text-lg font-medium">존재하지 않는 방이에요</p>
-        <button onClick={() => router.push('/')} className="mt-4 text-orange-500 underline text-sm">
+        <button onClick={() => router.push('/')} className="mt-4 text-violet-600 underline text-sm">
           홈으로 가기
         </button>
       </div>
@@ -120,10 +120,10 @@ export default function RoomPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-28">
       {/* 헤더 */}
-      <div className="bg-orange-500 text-white py-4 px-4 text-center sticky top-0 z-10">
+      <div className="bg-violet-600 text-white py-4 px-4 text-center sticky top-0 z-10">
         <p className="text-xs opacity-75 mb-0.5">방 코드</p>
         <p className="text-2xl font-black tracking-[0.3em]">{code}</p>
-        {room?.location && <p className="text-orange-100 text-xs mt-1">📍 {room.location}</p>}
+        {room?.location && <p className="text-violet-200 text-xs mt-1">📍 {room.location}</p>}
       </div>
 
       <div className="max-w-md mx-auto px-4 pt-5 space-y-4">
@@ -134,7 +134,7 @@ export default function RoomPage() {
           <input
             type="text" value={name} onChange={e => setName(e.target.value)}
             placeholder="표시될 이름을 입력하세요" maxLength={12}
-            className="w-full border-2 border-gray-100 rounded-xl p-3 text-base focus:outline-none focus:border-orange-400"
+            className="w-full border-2 border-gray-100 rounded-xl p-3 text-base focus:outline-none focus:border-violet-400"
           />
         </section>
 
@@ -177,7 +177,7 @@ export default function RoomPage() {
                 onClick={() => toggle(dontWant, setDontWant, opt.id)}
                 className={`py-2.5 px-2 rounded-xl border-2 text-sm font-medium transition-colors ${
                   dontWant.includes(opt.id)
-                    ? 'border-orange-400 bg-orange-50 text-orange-600'
+                    ? 'border-violet-400 bg-violet-50 text-violet-600'
                     : 'border-gray-100 bg-gray-50 text-gray-600'
                 }`}
               >
@@ -197,7 +197,7 @@ export default function RoomPage() {
                 onClick={() => setBudget(opt.id)}
                 className={`w-full py-3 px-4 rounded-xl border-2 text-left font-medium text-sm transition-colors ${
                   budget === opt.id
-                    ? 'border-orange-400 bg-orange-50 text-orange-700'
+                    ? 'border-violet-400 bg-violet-50 text-violet-700'
                     : 'border-gray-100 bg-gray-50 text-gray-600'
                 }`}
               >
@@ -217,7 +217,7 @@ export default function RoomPage() {
             className={`w-full py-3 rounded-xl border-2 font-medium text-sm transition-colors ${
               gpsStatus === 'done'    ? 'border-green-400 bg-green-50 text-green-700' :
               gpsStatus === 'error'   ? 'border-gray-200 bg-gray-50 text-gray-400' :
-              gpsStatus === 'loading' ? 'border-orange-200 bg-orange-50 text-orange-400' :
+              gpsStatus === 'loading' ? 'border-violet-200 bg-violet-50 text-violet-400' :
                                        'border-blue-200 bg-blue-50 text-blue-600'
             }`}
           >
@@ -237,7 +237,7 @@ export default function RoomPage() {
           <button
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="w-full bg-orange-500 text-white text-lg font-bold py-4 rounded-2xl shadow-md active:scale-95 transition-transform disabled:opacity-50 disabled:scale-100"
+            className="w-full bg-violet-600 text-white text-lg font-bold py-4 rounded-2xl shadow-md active:scale-95 transition-transform disabled:opacity-50 disabled:scale-100"
           >
             {isSubmitting ? '저장 중...' : '완료'}
           </button>

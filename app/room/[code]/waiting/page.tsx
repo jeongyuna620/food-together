@@ -101,15 +101,15 @@ export default function WaitingPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-32">
       {/* 헤더 */}
-      <div className="bg-orange-500 text-white py-4 px-4 text-center">
+      <div className="bg-violet-600 text-white py-4 px-4 text-center">
         <p className="text-xs opacity-75 mb-0.5">방 코드</p>
         <p className="text-2xl font-black tracking-[0.3em]">{code}</p>
       </div>
 
       {/* AI 처리 중 배너 */}
       {processing && (
-        <div className="bg-orange-50 border-b border-orange-200 py-3 text-center">
-          <p className="text-orange-600 font-medium text-sm animate-pulse">
+        <div className="bg-violet-50 border-b border-violet-200 py-3 text-center">
+          <p className="text-violet-600 font-medium text-sm animate-pulse">
             🤖 AI가 최적의 식당을 찾고 있어요...
           </p>
         </div>
@@ -120,7 +120,7 @@ export default function WaitingPage() {
         <section className="bg-white rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-bold text-base">참여 현황</h2>
-            <span className="text-sm font-bold text-orange-500">
+            <span className="text-sm font-bold text-violet-600">
               {completedCount} / {participants.length}명 완료
             </span>
           </div>
@@ -135,7 +135,7 @@ export default function WaitingPage() {
                   <span className="flex-1 font-medium text-sm">
                     {p.name}
                     {p.name === myName && <span className="text-xs text-gray-400 ml-1">(나)</span>}
-                    {p.name === room?.host_name && <span className="text-xs text-orange-400 ml-1">방장</span>}
+                    {p.name === room?.host_name && <span className="text-xs text-violet-400 ml-1">방장</span>}
                   </span>
                   <span className={`text-xs font-medium ${p.completed ? 'text-green-500' : 'text-gray-400'}`}>
                     {p.completed ? '완료' : '입력 중'}
@@ -179,7 +179,7 @@ export default function WaitingPage() {
               <button
                 onClick={handleRecommend}
                 disabled={processing}
-                className="w-full bg-orange-500 text-white text-lg font-bold py-4 rounded-2xl shadow-md active:scale-95 transition-transform disabled:opacity-60 disabled:scale-100"
+                className="w-full bg-violet-600 text-white text-lg font-bold py-4 rounded-2xl shadow-md active:scale-95 transition-transform disabled:opacity-60 disabled:scale-100"
               >
                 {processing
                   ? '🤖  AI가 추천 중...'

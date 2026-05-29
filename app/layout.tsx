@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: '오늘 뭐먹지?',
-  description: '여러 명의 취향을 한 번에 — AI 맞춤 식당 추천',
+  title: 'Eatween',
+  description: '여러 명의 취향을 한 번에 — 맞춤 식당 추천',
 }
 
 export const viewport: Viewport = {

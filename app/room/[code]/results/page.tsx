@@ -85,6 +85,22 @@ function buildGroups(places: PlaceRow[], participants: ParticipantRow[]): Catego
   return result
 }
 
+// 구형 데이터(menus: string[]) → 신형(menus: MenuRecommendation[]) 변환
+function migrateOldFormat(cats: CategoryRecommendation[]): CategoryRecommendation[] {
+  return cats.map(g => {
+    if (g.menus.length === 0 || typeof (g.menus[0] as any) !== 'string') return g
+    const oldData = g as any
+    const categoryRestaurants: RestaurantItem[] = oldData.restaurants ?? []
+    return {
+      ...g,
+      menus: (g.menus as any as string[]).map(name => ({
+        name,
+        restaurants: categoryRestaurants,
+      })),
+    }
+  })
+}
+
 function loadKakaoMaps(appKey: string): Promise<void> {
   return new Promise((resolve, reject) => {
     if (window.kakao?.maps?.services) { resolve(); return }
@@ -145,10 +161,12 @@ export default function ResultsPage() {
       ])
 
       if (roomData?.recommendations) {
-        const cats = roomData.recommendations as CategoryRecommendation[]
+        const raw = roomData.recommendations as CategoryRecommendation[]
+        // 구형 데이터 포맷 자동 변환 (menus: string[] → MenuRecommendation[])
+        const cats = migrateOldFormat(raw)
         setGroups(cats)
 
-        // 더미 데이터 감지: 모든 메뉴의 식당에 URL이 없으면 JS SDK로 재검색 (방장만)
+        // 더미 데이터 감지: 모든 식당에 URL이 없으면 JS SDK로 재검색 (방장만)
         const isDummy = cats.every(g => g.menus.every(m => m.restaurants.every(r => !r.url)))
         const jsKey = process.env.NEXT_PUBLIC_KAKAO_JS_KEY
         if (isDummy && isHost && jsKey && roomData.location) {
@@ -238,17 +256,17 @@ export default function ResultsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-8">
-      <div className="bg-orange-500 text-white py-5 px-4 text-center">
+      <div className="bg-violet-600 text-white py-5 px-4 text-center">
         <p className="text-2xl mb-1">🎉</p>
         <h1 className="text-xl font-black">추천 결과</h1>
-        <p className="text-orange-100 text-sm mt-1">메뉴를 눌러 식당을 확인하세요</p>
+        <p className="text-violet-200 text-sm mt-1">메뉴를 눌러 식당을 확인하세요</p>
       </div>
 
       <div className="max-w-md mx-auto px-4 pt-5 space-y-3">
         {/* JS SDK 검색 중 배너 */}
         {searching && (
-          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-center">
-            <p className="text-blue-700 text-sm font-semibold animate-pulse">📍 주변 식당 실시간 검색 중...</p>
+          <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4 text-center">
+            <p className="text-violet-700 text-sm font-semibold animate-pulse">📍 주변 식당 실시간 검색 중...</p>
           </div>
         )}
 
@@ -264,7 +282,7 @@ export default function ResultsPage() {
 
         {/* 현재 1위 배너 */}
         {winnerEntry && winnerGroup && (
-          <div className="bg-gradient-to-r from-yellow-400 to-orange-400 rounded-2xl p-4 text-white shadow-md">
+          <div className="bg-gradient-to-r from-yellow-400 to-amber-400 rounded-2xl p-4 text-white shadow-md">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xl">👑</span>
               <span className="font-bold text-sm">현재 1위</span>
@@ -272,7 +290,7 @@ export default function ResultsPage() {
             <p className="text-xl font-black mb-0.5">{winnerEntry.r.name}</p>
             <p className="text-yellow-100 text-sm mb-3">OK {winnerEntry.ok}표 · {winnerGroup.category}</p>
             <a href={kakaoNavLink(winnerEntry.r)} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 bg-white text-orange-500 font-bold px-4 py-2 rounded-xl text-sm shadow-sm">
+              className="inline-flex items-center gap-1.5 bg-white text-amber-600 font-bold px-4 py-2 rounded-xl text-sm shadow-sm">
               🗺️ 카카오맵 길찾기
             </a>
           </div>
@@ -295,7 +313,7 @@ export default function ResultsPage() {
                   <h2 className="font-bold text-base">{group.category}</h2>
                   <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                     isFullMatch ? 'bg-green-100 text-green-700' :
-                    group.matchCount === 0 ? 'bg-red-100 text-red-500' : 'bg-orange-100 text-orange-700'
+                    group.matchCount === 0 ? 'bg-red-100 text-red-500' : 'bg-violet-100 text-violet-700'
                   }`}>
                     {isFullMatch ? '✓ 모두 가능' : group.matchCount === 0 ? '❌ 불가' : `${group.matchCount}/${group.totalCount}명`}
                   </span>
@@ -303,7 +321,7 @@ export default function ResultsPage() {
                     {isOpen ? `${restaurants.length}곳` : `${group.menus.length}개 메뉴`}
                   </span>
                 </div>
-                {/* 메뉴 칩 — 클릭하면 해당 메뉴 식당 목록 열림 */}
+                {/* 메뉴 칩 */}
                 <p className="text-xs text-gray-400 mb-2">먹고 싶은 메뉴를 선택하세요</p>
                 <div className="flex flex-wrap gap-2">
                   {group.menus.map(menu => {
@@ -314,8 +332,8 @@ export default function ResultsPage() {
                         onClick={() => handleMenuClick(group.category, menu.name)}
                         className={`px-3 py-1.5 rounded-full text-sm font-semibold border-2 transition-all active:scale-95 ${
                           active
-                            ? 'border-orange-400 bg-orange-500 text-white shadow-sm'
-                            : 'border-orange-200 bg-orange-50 text-orange-600'
+                            ? 'border-violet-500 bg-violet-600 text-white shadow-sm'
+                            : 'border-violet-200 bg-violet-50 text-violet-600'
                         }`}
                       >
                         {active ? '✓ ' : ''}{menu.name}
@@ -329,7 +347,7 @@ export default function ResultsPage() {
               {isOpen && (
                 <div className="border-t border-gray-100">
                   <p className="px-4 py-2 text-xs text-gray-500 bg-gray-50">
-                    <span className="font-semibold text-orange-500">{selectedMenu?.menu}</span> 파는 식당 {restaurants.length}곳
+                    <span className="font-semibold text-violet-600">{selectedMenu?.menu}</span> 파는 식당 {restaurants.length}곳
                   </p>
                   {restaurants.length === 0 ? (
                     <p className="px-4 py-4 text-center text-gray-400 text-sm">근처에 식당 정보가 없어요</p>

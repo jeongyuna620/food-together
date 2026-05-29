@@ -65,13 +65,13 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-orange-400 to-orange-500 flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-b from-violet-600 to-purple-700 flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-sm">
         {/* 히어로 */}
         <div className="text-center mb-10">
-          <div className="text-7xl mb-4">🍽️</div>
-          <h1 className="text-4xl font-black text-white mb-2">오늘 뭐먹지?</h1>
-          <p className="text-orange-100 text-base leading-relaxed">
+          <div className="text-6xl mb-4">🍽️</div>
+          <h1 className="text-5xl font-black text-white mb-2 tracking-tight">Eatween</h1>
+          <p className="text-violet-200 text-base leading-relaxed">
             각자의 취향을 입력하면<br />딱 맞는 식당을 추천해줘요
           </p>
         </div>
@@ -89,7 +89,7 @@ export default function HomePage() {
               placeholder="친구들에게 보일 이름"
               maxLength={12}
               autoFocus
-              className="w-full border-2 border-gray-100 rounded-2xl p-3 text-base font-medium focus:outline-none focus:border-orange-400 mb-4"
+              className="w-full border-2 border-gray-100 rounded-2xl p-3 text-base font-medium focus:outline-none focus:border-violet-400 mb-4"
             />
 
             <label className="block text-sm font-semibold text-gray-600 mb-1">
@@ -102,7 +102,7 @@ export default function HomePage() {
               onKeyDown={e => e.key === 'Enter' && handleCreate()}
               placeholder="예: 강남역, 홍대입구, 건국대"
               maxLength={30}
-              className="w-full border-2 border-gray-100 rounded-2xl p-3 text-base font-medium focus:outline-none focus:border-orange-400 mb-4"
+              className="w-full border-2 border-gray-100 rounded-2xl p-3 text-base font-medium focus:outline-none focus:border-violet-400 mb-4"
             />
 
             {createError && <p className="text-red-500 text-sm text-center mb-3">{createError}</p>}
@@ -110,7 +110,7 @@ export default function HomePage() {
             <button
               onClick={handleCreate}
               disabled={!hostName.trim() || isCreating}
-              className="w-full bg-orange-500 text-white text-lg font-bold py-4 rounded-2xl shadow-md active:scale-95 transition-transform disabled:opacity-50 disabled:scale-100"
+              className="w-full bg-violet-600 text-white text-lg font-bold py-4 rounded-2xl shadow-md active:scale-95 transition-transform disabled:opacity-50 disabled:scale-100"
             >
               {isCreating ? '생성 중...' : '방 만들기'}
             </button>
@@ -124,7 +124,7 @@ export default function HomePage() {
         ) : (
           <button
             onClick={() => { setShowCreateForm(true); setShowJoinForm(false) }}
-            className="w-full bg-white text-orange-500 text-xl font-black py-5 rounded-3xl shadow-2xl active:scale-95 transition-transform mb-4"
+            className="w-full bg-white text-violet-600 text-xl font-black py-5 rounded-3xl shadow-2xl active:scale-95 transition-transform mb-4"
           >
             🏠 방 만들기
           </button>
@@ -144,7 +144,7 @@ export default function HomePage() {
               placeholder="예: AB1234"
               maxLength={6}
               autoFocus
-              className="w-full border-2 border-gray-100 rounded-2xl p-4 text-center text-2xl font-black tracking-[0.4em] focus:outline-none focus:border-orange-400 mb-3 uppercase"
+              className="w-full border-2 border-gray-100 rounded-2xl p-4 text-center text-2xl font-black tracking-[0.4em] focus:outline-none focus:border-violet-400 mb-3 uppercase"
             />
 
             {joinError && <p className="text-red-500 text-sm text-center mb-3">{joinError}</p>}
@@ -152,7 +152,7 @@ export default function HomePage() {
             <button
               onClick={handleJoin}
               disabled={joinCode.length < 6 || isJoining}
-              className="w-full bg-orange-500 text-white text-lg font-bold py-4 rounded-2xl shadow-md active:scale-95 transition-transform disabled:opacity-50 disabled:scale-100"
+              className="w-full bg-violet-600 text-white text-lg font-bold py-4 rounded-2xl shadow-md active:scale-95 transition-transform disabled:opacity-50 disabled:scale-100"
             >
               {isJoining ? '확인 중...' : '입장하기'}
             </button>
@@ -172,7 +172,7 @@ export default function HomePage() {
           </button>
         )}
 
-        <p className="text-orange-200 text-xs text-center mt-8">
+        <p className="text-violet-300 text-xs text-center mt-8">
           방을 만들고 코드를 공유하면<br />친구들이 바로 참여할 수 있어요
         </p>
       </div>
