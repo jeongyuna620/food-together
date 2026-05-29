@@ -31,6 +31,7 @@ export default function HomePage() {
 
       localStorage.setItem('participantName', hostName.trim())
       localStorage.setItem('isHost', 'true')
+      localStorage.setItem('lastRoomCode', data.code)
       router.push(`/room/${data.code}`)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : '다시 시도해주세요')

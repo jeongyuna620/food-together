@@ -33,7 +33,9 @@ export default function RoomPage() {
     setRoomStatus('ok')
 
     const storedName = localStorage.getItem('participantName')
-    if (storedName) {
+    const storedCode = localStorage.getItem('lastRoomCode')
+    // 같은 방에서 이미 완료한 경우에만 대기실로 이동 (다른 방 기록은 무시)
+    if (storedName && storedCode === code) {
       setName(storedName)
       const { data: existing } = await supabase
         .from('participants').select('completed')
@@ -75,6 +77,7 @@ export default function RoomPage() {
       }
 
       localStorage.setItem('participantName', name.trim())
+      localStorage.setItem('lastRoomCode', code)
       router.push(`/room/${code}/waiting`)
     } catch {
       setError('저장에 실패했습니다. 다시 시도해주세요.')
