@@ -341,7 +341,8 @@ export default function ResultsPage() {
         {/* 카테고리 카드 — 전체 표시 (matchCount 높은 순 정렬) */}
         {groups.map(group => {
           const isFullMatch = group.matchCount === group.totalCount
-          const isOpen = selectedMenu?.category === group.category
+          const isBlocked = group.matchCount === 0   // 모두 싫다고 한 카테고리
+          const isOpen = !isBlocked && selectedMenu?.category === group.category
           const selectedMenuData = isOpen
             ? group.menus.find(m => m.name === selectedMenu?.menu) ?? null
             : null
@@ -350,39 +351,48 @@ export default function ResultsPage() {
           return (
             <div key={group.category} className="bg-white rounded-2xl shadow-sm overflow-hidden">
               {/* 카테고리 헤더 */}
-              <div className="px-4 pt-4 pb-3">
+              <div className={`px-4 pt-4 ${isBlocked ? 'pb-4' : 'pb-3'}`}>
                 <div className="flex items-center gap-2 mb-3">
-                  <h2 className="font-bold text-base">{group.category}</h2>
+                  <h2 className={`font-bold text-base ${isBlocked ? 'text-gray-400' : ''}`}>{group.category}</h2>
                   <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                     isFullMatch ? 'bg-green-100 text-green-700' :
-                    group.matchCount === 0 ? 'bg-red-100 text-red-500' : 'bg-violet-100 text-violet-700'
+                    isBlocked   ? 'bg-red-100 text-red-400'    : 'bg-violet-100 text-violet-700'
                   }`}>
-                    {isFullMatch ? '✓ 모두 가능' : group.matchCount === 0 ? '❌ 불가' : `${group.matchCount}/${group.totalCount}명`}
+                    {isFullMatch ? '✓ 모두 가능' : isBlocked ? '❌ 전원 제외' : `${group.matchCount}/${group.totalCount}명 가능`}
                   </span>
-                  <span className="ml-auto text-gray-400 text-xs">
-                    {isOpen ? `${restaurants.length}곳` : `${group.menus.length}개 메뉴`}
-                  </span>
+                  {!isBlocked && (
+                    <span className="ml-auto text-gray-400 text-xs">
+                      {isOpen ? `${restaurants.length}곳` : `${group.menus.length}개 메뉴`}
+                    </span>
+                  )}
                 </div>
-                {/* 메뉴 칩 */}
-                <p className="text-xs text-gray-400 mb-2">먹고 싶은 메뉴를 선택하세요</p>
-                <div className="flex flex-wrap gap-2">
-                  {group.menus.map(menu => {
-                    const active = selectedMenu?.category === group.category && selectedMenu?.menu === menu.name
-                    return (
-                      <button
-                        key={menu.name}
-                        onClick={() => handleMenuClick(group.category, menu.name)}
-                        className={`px-3 py-1.5 rounded-full text-sm font-semibold border-2 transition-all active:scale-95 ${
-                          active
-                            ? 'border-violet-500 bg-violet-600 text-white shadow-sm'
-                            : 'border-violet-200 bg-violet-50 text-violet-600'
-                        }`}
-                      >
-                        {active ? '✓ ' : ''}{menu.name}
-                      </button>
-                    )
-                  })}
-                </div>
+
+                {/* 불가 카테고리는 메뉴 없이 안내 문구만 */}
+                {isBlocked ? (
+                  <p className="text-xs text-gray-400">모든 참여자가 제외한 카테고리예요</p>
+                ) : (
+                  <>
+                    <p className="text-xs text-gray-400 mb-2">먹고 싶은 메뉴를 선택하세요</p>
+                    <div className="flex flex-wrap gap-2">
+                      {group.menus.map(menu => {
+                        const active = selectedMenu?.category === group.category && selectedMenu?.menu === menu.name
+                        return (
+                          <button
+                            key={menu.name}
+                            onClick={() => handleMenuClick(group.category, menu.name)}
+                            className={`px-3 py-1.5 rounded-full text-sm font-semibold border-2 transition-all active:scale-95 ${
+                              active
+                                ? 'border-violet-500 bg-violet-600 text-white shadow-sm'
+                                : 'border-violet-200 bg-violet-50 text-violet-600'
+                            }`}
+                          >
+                            {active ? '✓ ' : ''}{menu.name}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* 식당 목록 — 선택된 메뉴의 식당 표시 */}
