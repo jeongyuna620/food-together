@@ -338,8 +338,8 @@ export default function ResultsPage() {
           </div>
         )}
 
-        {/* 카테고리 카드 — 상위 4개만 표시 */}
-        {groups.slice(0, 4).map(group => {
+        {/* 카테고리 카드 — 전체 표시 (matchCount 높은 순 정렬) */}
+        {groups.map(group => {
           const isFullMatch = group.matchCount === group.totalCount
           const isOpen = selectedMenu?.category === group.category
           const selectedMenuData = isOpen
