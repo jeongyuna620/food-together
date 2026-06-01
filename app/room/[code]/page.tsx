@@ -135,17 +135,17 @@ export default function RoomPage() {
         <section className="bg-white rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between mb-1">
             <h2 className="font-bold text-base">못 먹는 것</h2>
-            <span className="text-xs text-gray-400">{cantEat.length}/5</span>
+            <span className="text-xs text-gray-400">{cantEat.length}/3</span>
           </div>
-          <p className="text-xs text-gray-400 mb-3">해당 없으면 넘어가세요 · 최대 5개</p>
+          <p className="text-xs text-gray-400 mb-3">해당 없으면 넘어가세요 · 최대 3개</p>
           <div className="grid grid-cols-3 gap-2 mb-3">
             {CANT_EAT_OPTIONS.map(opt => {
               const selected = cantEat.includes(opt.id)
-              const disabled = !selected && cantEat.length >= 5
+              const disabled = !selected && cantEat.length >= 3
               return (
                 <button
                   key={opt.id}
-                  onClick={() => toggle(cantEat, setCantEat, opt.id, 5)}
+                  onClick={() => toggle(cantEat, setCantEat, opt.id, 3)}
                   disabled={disabled}
                   className={`py-2.5 px-2 rounded-xl border-2 text-sm font-medium transition-colors ${
                     selected
@@ -173,17 +173,17 @@ export default function RoomPage() {
         <section className="bg-white rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between mb-1">
             <h2 className="font-bold text-base">오늘 먹기 싫은 것</h2>
-            <span className="text-xs text-gray-400">{dontWant.length}/3</span>
+            <span className="text-xs text-gray-400">{dontWant.length}/2</span>
           </div>
-          <p className="text-xs text-gray-400 mb-3">해당 없으면 넘어가세요 · 최대 3개</p>
+          <p className="text-xs text-gray-400 mb-3">해당 없으면 넘어가세요 · 최대 2개</p>
           <div className="grid grid-cols-2 gap-2">
             {DONT_WANT_OPTIONS.map(opt => {
               const selected = dontWant.includes(opt.id)
-              const disabled = !selected && dontWant.length >= 3
+              const disabled = !selected && dontWant.length >= 2
               return (
                 <button
                   key={opt.id}
-                  onClick={() => toggle(dontWant, setDontWant, opt.id, 3)}
+                  onClick={() => toggle(dontWant, setDontWant, opt.id, 2)}
                   disabled={disabled}
                   className={`py-2.5 px-2 rounded-xl border-2 text-sm font-medium transition-colors ${
                     selected

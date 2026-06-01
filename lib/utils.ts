@@ -15,7 +15,7 @@ export function formatDistance(distance: string | number): string {
 
 // ─── 못 먹는 것 ──────────────────────────────────────────────────────────────
 export const CANT_EAT_OPTIONS = [
-  // 육류
+  // 육류·해산물
   { id: 'pork',       label: '돼지고기' },
   { id: 'beef',       label: '소고기' },
   { id: 'chicken',    label: '닭고기' },
@@ -25,15 +25,11 @@ export const CANT_EAT_OPTIONS = [
   { id: 'dairy',      label: '유제품' },
   { id: 'gluten',     label: '밀가루' },
   { id: 'egg',        label: '계란' },
+  // 특정 식재료
   { id: 'nuts',       label: '견과류' },
-  // 채소
   { id: 'mushroom',   label: '버섯' },
-  { id: 'eggplant',   label: '가지' },
-  { id: 'cucumber',   label: '오이' },
-  { id: 'coriander',  label: '고수' },
-  { id: 'garlic',     label: '마늘' },
-  { id: 'onion',      label: '양파' },
 ]
+// 가지·오이·고수·마늘·양파는 메뉴 단위 필터링이 어려워 제외 → 기타 직접 입력 사용
 
 // ─── 오늘 먹기 싫은 것 ───────────────────────────────────────────────────────
 export const DONT_WANT_OPTIONS = [
@@ -58,9 +54,8 @@ export const BUDGET_OPTIONS = [
 // ─── 레이블 맵 ───────────────────────────────────────────────────────────────
 export const CANT_EAT_LABELS: Record<string, string> = {
   pork: '돼지고기', beef: '소고기', chicken: '닭고기', seafood: '해산물',
-  vegetarian: '채식', dairy: '유제품', gluten: '밀가루', egg: '계란', nuts: '견과류',
-  mushroom: '버섯', eggplant: '가지', cucumber: '오이', coriander: '고수',
-  garlic: '마늘', onion: '양파',
+  vegetarian: '채식', dairy: '유제품', gluten: '밀가루', egg: '계란',
+  nuts: '견과류', mushroom: '버섯',
 }
 
 export const DONT_WANT_LABELS: Record<string, string> = {
