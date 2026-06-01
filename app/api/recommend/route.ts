@@ -37,52 +37,83 @@ interface CategoryRecommendation {
   totalCount: number
 }
 
-// ─── 카테고리별 메뉴 (확장) ────────────────────────────────────────────────────
+// ─── 카테고리별 메뉴 (풀 확장 — 재추천 다양성 확보) ──────────────────────────────
 const CATEGORY_MENUS: Record<string, string[]> = {
-  한식:       ['된장찌개', '제육볶음', '비빔밥', '순두부찌개', '삼겹살', '갈비탕', '불고기', '칼국수',
-               '김치찌개', '닭갈비', '쌈밥', '냉면', '육개장', '해장국'],
-  일식:       ['라멘', '돈카츠', '우동', '규동', '오야코동', '스시', '나베', '소바',
-               '야키토리', '텐동', '히레카츠', '새우튀김덮밥'],
-  중식:       ['짜장면', '짬뽕', '볶음밥', '탕수육', '마라탕', '깐풍기', '딤섬',
-               '마라샹궈', '양꼬치', '훠궈'],
-  양식:       ['크림파스타', '피자', '스테이크', '리조또', '알리오올리오', '뇨끼',
-               '토마토파스타', '샐러드', '브런치'],
-  분식:       ['떡볶이', '순대', '튀김', '김밥', '라볶이', '치즈떡볶이', '쫄면',
-               '핫도그', '어묵탕', '만두'],
-  치킨:       ['후라이드', '양념치킨', '간장치킨', '반반치킨', '파닭',
-               '마늘치킨', '뿌링클', '허니콤보'],
-  패스트푸드: ['버거', '감자튀김', '치킨너겟', '치즈버거', '샌드위치', '랩'],
+  한식: [
+    '된장찌개', '제육볶음', '비빔밥', '순두부찌개', '삼겹살', '갈비탕', '불고기', '칼국수',
+    '김치찌개', '닭갈비', '쌈밥', '냉면', '육개장', '해장국',
+    '설렁탕', '갈비찜', '보쌈', '족발', '순대국밥', '닭한마리', '감자탕', '해물탕', '삼계탕',
+  ],
+  일식: [
+    '라멘', '돈카츠', '우동', '규동', '오야코동', '스시', '나베', '소바',
+    '야키토리', '텐동', '히레카츠', '새우튀김덮밥',
+    '가라아게', '타코야키', '오코노미야키', '스키야키', '카레라이스',
+  ],
+  중식: [
+    '짜장면', '짬뽕', '볶음밥', '탕수육', '마라탕', '깐풍기', '딤섬',
+    '마라샹궈', '양꼬치', '훠궈',
+    '꿔바로우', '팔보채', '마파두부',
+  ],
+  양식: [
+    '크림파스타', '피자', '스테이크', '리조또', '알리오올리오', '뇨끼',
+    '토마토파스타', '샐러드', '브런치',
+    '함박스테이크', '카르보나라', '봉골레',
+  ],
+  분식: [
+    '떡볶이', '순대', '튀김', '김밥', '라볶이', '치즈떡볶이', '쫄면',
+    '핫도그', '어묵탕', '만두',
+    '볶음우동', '마약김밥', '돈가스', '오뎅국물',
+  ],
+  치킨: [
+    '후라이드', '양념치킨', '간장치킨', '반반치킨', '파닭',
+    '마늘치킨', '뿌링클', '허니콤보',
+    '순살치킨', '닭강정', '매운치킨',
+  ],
+  패스트푸드: [
+    '버거', '감자튀김', '치킨너겟', '치즈버거', '샌드위치', '랩',
+    '타코', '부리토',
+  ],
 }
-
 
 const RESTRICT_MENU_AVOID: Record<string, string[]> = {
   pork:       ['삼겹살', '제육볶음', '순대', '돈카츠', '두루치기', '김치찌개', '쌈밥',
-               '해장국', '핫도그', '만두', '보쌈', '족발'],
-  seafood:    ['짬뽕', '나베', '스시', '소바', '해물파전', '텐동', '새우튀김덮밥', '어묵탕'],
+               '해장국', '핫도그', '만두', '보쌈', '족발',
+               '순대국밥', '감자탕', '돈가스', '꿔바로우', '카르보나라'],
+  seafood:    ['짬뽕', '나베', '스시', '소바', '해물파전', '텐동', '새우튀김덮밥', '어묵탕',
+               '해물탕', '봉골레', '팔보채', '오뎅국물', '오코노미야키'],
   chicken:    ['오야코동', '간장치킨', '양념치킨', '후라이드', '깐풍기', '치킨너겟', '파닭',
-               '반반치킨', '닭볶음탕', '닭갈비', '야키토리', '마늘치킨', '뿌링클', '허니콤보'],
-  beef:       ['불고기', '갈비탕', '규동', '스테이크', '냉면', '육개장', '해장국', '양꼬치'],
+               '반반치킨', '닭볶음탕', '닭갈비', '야키토리', '마늘치킨', '뿌링클', '허니콤보',
+               '가라아게', '순살치킨', '닭강정', '매운치킨', '닭한마리', '삼계탕'],
+  beef:       ['불고기', '갈비탕', '규동', '스테이크', '냉면', '육개장', '해장국', '양꼬치',
+               '설렁탕', '갈비찜', '스키야키', '함박스테이크', '타코', '부리토'],
   vegetarian: ['삼겹살', '제육볶음', '돈카츠', '규동', '불고기', '갈비탕', '순대', '후라이드',
                '양념치킨', '깐풍기', '닭볶음탕', '두루치기', '오야코동', '치킨너겟', '간장치킨',
                '반반치킨', '파닭', '김치찌개', '닭갈비', '야키토리', '마늘치킨', '뿌링클', '허니콤보',
-               '보쌈', '족발', '양꼬치'],
-  dairy:      ['크림파스타', '리조또', '치즈떡볶이', '뇨끼', '뿌링클', '브런치'],
-  egg:        ['오야코동', '텐동', '브런치'],
+               '보쌈', '족발', '양꼬치',
+               '순대국밥', '감자탕', '닭한마리', '삼계탕', '갈비찜', '설렁탕',
+               '가라아게', '순살치킨', '닭강정', '매운치킨', '스키야키', '함박스테이크',
+               '타코', '부리토', '카르보나라', '꿔바로우', '돈가스'],
+  dairy:      ['크림파스타', '리조또', '치즈떡볶이', '뇨끼', '뿌링클', '브런치', '카르보나라'],
+  egg:        ['오야코동', '텐동', '브런치', '타코야키', '오코노미야키', '카르보나라'],
   mushroom:   ['나베'],
   gluten:     ['라멘', '우동', '소바', '짜장면', '짬뽕', '칼국수', '돈카츠', '크림파스타',
                '알리오올리오', '뇨끼', '피자', '토마토파스타', '샌드위치', '핫도그', '만두',
-               '랩', '어묵탕', '히레카츠'],
+               '랩', '어묵탕', '히레카츠',
+               '볶음우동', '오뎅국물', '돈가스', '카르보나라', '봉골레', '함박스테이크',
+               '타코', '부리토', '타코야키', '오코노미야키', '가라아게'],
   nuts:       [],
 }
 
-// ─── 먹기 싫은 것 → 메뉴 필터 (카테고리 내 특정 메뉴 제외) ──────────────────────
+// ─── 먹기 싫은 것 → 메뉴 필터 ─────────────────────────────────────────────────
 const DONT_WANT_MENU_AVOID: Record<string, string[]> = {
   barbeque: ['삼겹살', '제육볶음', '갈비탕', '불고기', '돈카츠', '규동', '스테이크',
              '후라이드', '양념치킨', '간장치킨', '반반치킨', '파닭', '오야코동',
              '닭볶음탕', '두루치기', '치킨너겟', '닭갈비', '야키토리', '보쌈', '족발',
-             '양꼬치', '마늘치킨', '뿌링클', '허니콤보'],
+             '양꼬치', '마늘치킨', '뿌링클', '허니콤보',
+             '순살치킨', '닭강정', '매운치킨', '갈비찜', '닭한마리', '가라아게', '스키야키', '함박스테이크'],
   soup:     ['된장찌개', '순두부찌개', '갈비탕', '칼국수', '라멘', '우동', '짬뽕', '나베',
-             '김치찌개', '육개장', '해장국', '훠궈'],
+             '김치찌개', '육개장', '해장국', '훠궈',
+             '설렁탕', '순대국밥', '감자탕', '해물탕', '닭한마리', '삼계탕', '오뎅국물'],
 }
 
 // ─── 먹기 싫은 것 → 카테고리 제외 ────────────────────────────────────────────
@@ -102,16 +133,25 @@ function shuffleAndPick<T>(arr: T[], n: number): T[] {
   return shuffled.slice(0, Math.min(n, shuffled.length))
 }
 
-function pickMenus(category: string, cantEat: string[], dontWant: string[] = []): string[] {
+// excludeMenus: 재추천 시 이전에 보여준 메뉴를 전달받아 제외
+function pickMenus(
+  category: string,
+  cantEat: string[],
+  dontWant: string[] = [],
+  excludeMenus: string[] = [],
+): string[] {
   const all = CATEGORY_MENUS[category] ?? ['다양한 메뉴']
   const avoid = [
     ...cantEat.flatMap(r => RESTRICT_MENU_AVOID[r] ?? []),
     ...dontWant.flatMap(d => DONT_WANT_MENU_AVOID[d] ?? []),
   ]
+  // 제약 조건 적용 후 이전에 보여준 메뉴 제외
   const filtered = all.filter(m => !avoid.some(a => m.includes(a)))
   const pool = filtered.length > 0 ? filtered : all
-  // 카테고리당 최대 5개 랜덤 선택 → API 호출 수 감소 + 매 세션마다 다른 메뉴
-  return shuffleAndPick(pool, 5)
+  const fresh = pool.filter(m => !excludeMenus.includes(m))
+  // 새 메뉴가 5개 미만이면 기존 pool에서 보완
+  const finalPool = fresh.length >= 5 ? fresh : pool
+  return shuffleAndPick(finalPool, 5)
 }
 
 // ─── 메뉴별 카카오 키워드 검색 ────────────────────────────────────────────────
@@ -152,12 +192,11 @@ const DUMMY_BY_CATEGORY: Record<string, RestaurantItem[]> = {
   분식:       [{ name: '엽기떡볶이', address: '근처', distance: '600', phone: '', url: '', lat: 37.5665, lng: 126.9780 }],
   치킨:       [{ name: '굽네치킨',   address: '근처', distance: '650', phone: '', url: '', lat: 37.5665, lng: 126.9780 }],
   패스트푸드: [{ name: '맥도날드',   address: '근처', distance: '800', phone: '', url: '', lat: 37.5665, lng: 126.9780 }],
-  요리주점:   [{ name: '맛있는주점', address: '근처', distance: '500', phone: '', url: '', lat: 37.5665, lng: 126.9780 }],
 }
 
 // ─── API Route ──────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
-  const { room_code } = await req.json()
+  const { room_code, exclude_menus = [] } = await req.json()
   if (!room_code) return NextResponse.json({ error: '방 코드가 없습니다' }, { status: 400 })
 
   await supabase.from('rooms').update({ status: 'recommending' }).eq('code', room_code)
@@ -177,14 +216,13 @@ export async function POST(req: NextRequest) {
     const locationText = roomData?.location ?? ''
     const allCantEat = Array.from(new Set(participants.flatMap((p: { cant_eat?: string[] }) => p.cant_eat ?? [])))
     const allDontWant = Array.from(new Set(participants.flatMap((p: { dont_want?: string[] }) => p.dont_want ?? [])))
-
     const key = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY
 
-    // 카테고리별 메뉴 검색 태스크 생성 (cant_eat + dont_want 반영)
+    // 카테고리별 메뉴 태스크 생성 (이전 메뉴 제외하여 새로운 조합 추천)
     type SearchTask = { category: string; menu: string }
     const tasks: SearchTask[] = []
     for (const category of Object.keys(CATEGORY_MENUS)) {
-      const menus = pickMenus(category, allCantEat, allDontWant)
+      const menus = pickMenus(category, allCantEat, allDontWant, exclude_menus)
       for (const menu of menus) {
         tasks.push({ category, menu })
       }
@@ -204,7 +242,6 @@ export async function POST(req: NextRequest) {
       menuResults = tasks.map(t => DUMMY_BY_CATEGORY[t.category] ?? [])
     }
 
-    // 결과를 CategoryRecommendation[] 형태로 조립
     const categoryMap: Record<string, MenuRecommendation[]> = {}
     tasks.forEach((task, i) => {
       if (!categoryMap[task.category]) categoryMap[task.category] = []

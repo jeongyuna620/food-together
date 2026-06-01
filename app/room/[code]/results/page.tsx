@@ -275,11 +275,13 @@ export default function ResultsPage() {
   const handleReRecommend = async () => {
     setReRecommending(true)
     setSelectedMenu(null)
+    // 현재 화면에 보이는 메뉴를 전달 → 서버에서 해당 메뉴를 제외하고 새 조합 선택
+    const shownMenus = groups.flatMap(g => g.menus.map(m => m.name))
     try {
       const res = await fetch('/api/recommend', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ room_code: code }),
+        body: JSON.stringify({ room_code: code, exclude_menus: shownMenus }),
       })
       const data = await res.json()
       if (data.recommendations) {
