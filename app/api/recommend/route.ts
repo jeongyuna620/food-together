@@ -55,16 +55,6 @@ const CATEGORY_MENUS: Record<string, string[]> = {
   요리주점:   ['파전', '모듬전', '닭볶음탕', '두루치기', '해물파전', '감자전', '보쌈', '족발'],
 }
 
-// ─── 예산별 허용 카테고리 ─────────────────────────────────────────────────────
-const BUDGET_ALLOWED_CATEGORIES: Record<string, string[]> = {
-  under_10k: ['한식', '분식', '패스트푸드', '치킨'],
-  '10k_20k': ['한식', '일식', '중식', '양식', '분식', '치킨', '패스트푸드'],
-  over_20k:  ['한식', '일식', '중식', '양식', '요리주점'],
-  any:       Object.keys(CATEGORY_MENUS),
-}
-const BUDGET_RANK: Record<string, number> = {
-  under_10k: 1, '10k_20k': 2, over_20k: 3, any: 99,
-}
 
 const RESTRICT_MENU_AVOID: Record<string, string[]> = {
   pork:       ['삼겹살', '제육볶음', '순대', '돈카츠', '두루치기', '김치찌개', '쌈밥',
@@ -183,26 +173,12 @@ export async function POST(req: NextRequest) {
     const allCantEat = Array.from(new Set(participants.flatMap((p: { cant_eat?: string[] }) => p.cant_eat ?? [])))
     const allDontWant = Array.from(new Set(participants.flatMap((p: { dont_want?: string[] }) => p.dont_want ?? [])))
 
-    // ── 예산 합의: 가장 제한적인 예산 기준으로 카테고리 필터 ──────────────────
-    const budgets = participants
-      .map((p: ParticipantRow) => p.budget)
-      .filter((b: string) => b && b !== 'any')
-    const consensusBudget = budgets.length > 0
-      ? (budgets as string[]).reduce((min: string, b: string) =>
-          (BUDGET_RANK[b] ?? 99) < (BUDGET_RANK[min] ?? 99) ? b : min
-        )
-      : 'any'
-    const allowedCategories = new Set<string>(
-      BUDGET_ALLOWED_CATEGORIES[consensusBudget] ?? Object.keys(CATEGORY_MENUS)
-    )
-
     const key = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY
 
-    // 카테고리별 메뉴 검색 태스크 생성 (예산 + cant_eat + dont_want 모두 반영)
+    // 카테고리별 메뉴 검색 태스크 생성 (cant_eat + dont_want 반영)
     type SearchTask = { category: string; menu: string }
     const tasks: SearchTask[] = []
     for (const category of Object.keys(CATEGORY_MENUS)) {
-      if (!allowedCategories.has(category)) continue  // 예산 외 카테고리 제외
       const menus = pickMenus(category, allCantEat, allDontWant)
       for (const menu of menus) {
         tasks.push({ category, menu })
