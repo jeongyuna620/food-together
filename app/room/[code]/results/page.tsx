@@ -46,14 +46,16 @@ const RESTRICT_AVOID: Record<string, string[]> = {
   nuts:       [],
 }
 const DONT_WANT_AVOID: Record<string, string[]> = {
-  meat: ['삼겹살', '제육볶음', '갈비탕', '불고기', '돈카츠', '규동', '스테이크',
-         '후라이드', '양념치킨', '간장치킨', '반반치킨', '파닭', '오야코동',
-         '닭볶음탕', '두루치기', '치킨너겟'],
-  soup: ['된장찌개', '순두부찌개', '갈비탕', '칼국수', '라멘', '우동', '짬뽕', '나베'],
+  barbeque: ['삼겹살', '제육볶음', '갈비탕', '불고기', '돈카츠', '규동', '스테이크',
+             '후라이드', '양념치킨', '간장치킨', '반반치킨', '파닭', '오야코동',
+             '닭볶음탕', '두루치기', '치킨너겟', '닭갈비', '야키토리', '보쌈', '족발',
+             '양꼬치', '마늘치킨', '뿌링클', '허니콤보'],
+  soup: ['된장찌개', '순두부찌개', '갈비탕', '칼국수', '라멘', '우동', '짬뽕', '나베',
+         '김치찌개', '육개장', '해장국', '훠궈'],
 }
 const DISLIKE_MAP: Record<string, string[]> = {
   korean: ['한식'], chinese: ['중식'], japanese: ['일식'],
-  western: ['양식'], bunsik: ['분식'], meat: ['치킨'], fastfood: ['패스트푸드'],
+  western: ['양식'], bunsik: ['분식'], barbeque: ['치킨', '요리주점'], fastfood: ['패스트푸드'],
 }
 
 function pickMenus(cat: string, cantEat: string[], dontWant: string[] = []): string[] {
@@ -161,6 +163,7 @@ export default function ResultsPage() {
   const [selectedMenu, setSelectedMenu] = useState<{ category: string; menu: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [searching, setSearching] = useState(false)
+  const [reRecommending, setReRecommending] = useState(false)
 
   useEffect(() => {
     const name = localStorage.getItem('participantName') ?? ''
@@ -209,11 +212,19 @@ export default function ResultsPage() {
     load()
 
     const ch = supabase
-      .channel(`votes-${code}`)
+      .channel(`results-${code}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'votes', filter: `room_code=eq.${code}` },
         p => setVotes(prev => [...prev, p.new as Vote]))
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'votes', filter: `room_code=eq.${code}` },
         p => setVotes(prev => prev.map(v => v.id === (p.new as Vote).id ? p.new as Vote : v)))
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `code=eq.${code}` },
+        p => {
+          if (p.new.recommendations) {
+            const cats = migrateOldFormat(p.new.recommendations as CategoryRecommendation[])
+            setGroups(cats)
+            setSelectedMenu(null)
+          }
+        })
       .subscribe()
 
     return () => { supabase.removeChannel(ch) }
@@ -253,6 +264,23 @@ export default function ResultsPage() {
     } else {
       await supabase.from('votes').insert({ room_code: code, participant_name: myName, restaurant_name: restaurantName, vote })
     }
+  }
+
+  const handleReRecommend = async () => {
+    setReRecommending(true)
+    setSelectedMenu(null)
+    try {
+      const res = await fetch('/api/recommend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ room_code: code }),
+      })
+      const data = await res.json()
+      if (data.recommendations) {
+        setGroups(migrateOldFormat(data.recommendations))
+      }
+    } catch (e) { console.error(e) }
+    setReRecommending(false)
   }
 
   const kakaoPlaceLink = (r: RestaurantItem) => r.url || `https://map.kakao.com/?q=${encodeURIComponent(r.name)}`
@@ -310,8 +338,8 @@ export default function ResultsPage() {
           </div>
         )}
 
-        {/* 카테고리 카드 — 메뉴 먼저, 클릭하면 해당 메뉴 식당 표시 */}
-        {groups.map(group => {
+        {/* 카테고리 카드 — 상위 4개만 표시 */}
+        {groups.slice(0, 4).map(group => {
           const isFullMatch = group.matchCount === group.totalCount
           const isOpen = selectedMenu?.category === group.category
           const selectedMenuData = isOpen
@@ -405,6 +433,20 @@ export default function ResultsPage() {
           <div className="text-center py-12 text-gray-400">
             <p className="text-4xl mb-3">😅</p>
             <p>추천 결과가 없어요</p>
+          </div>
+        )}
+
+        {/* 재추천 버튼 */}
+        {groups.length > 0 && (
+          <div className="pt-2 pb-4 text-center">
+            <button
+              onClick={handleReRecommend}
+              disabled={reRecommending}
+              className="w-full bg-white border-2 border-violet-200 text-violet-600 font-bold py-4 rounded-2xl shadow-sm active:scale-95 transition-transform disabled:opacity-50 disabled:scale-100"
+            >
+              {reRecommending ? '🔄 새 조합 찾는 중...' : '🔀 다른 조합 추천받기'}
+            </button>
+            <p className="text-xs text-gray-400 mt-2">누르면 모든 참여자에게 새 추천이 적용돼요</p>
           </div>
         )}
       </div>

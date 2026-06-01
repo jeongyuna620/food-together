@@ -46,8 +46,13 @@ export default function RoomPage() {
 
   useEffect(() => { checkAndRedirect() }, [checkAndRedirect])
 
-  const toggle = (list: string[], setList: (v: string[]) => void, id: string) =>
-    setList(list.includes(id) ? list.filter(x => x !== id) : [...list, id])
+  const toggle = (list: string[], setList: (v: string[]) => void, id: string, max?: number) => {
+    if (list.includes(id)) {
+      setList(list.filter(x => x !== id))
+    } else if (!max || list.length < max) {
+      setList([...list, id])
+    }
+  }
 
   const handleSubmit = async () => {
     if (!name.trim()) { setError('이름을 입력해주세요'); return }
@@ -128,22 +133,32 @@ export default function RoomPage() {
 
         {/* 못 먹는 것 */}
         <section className="bg-white rounded-2xl p-4 shadow-sm">
-          <h2 className="font-bold text-base mb-1">못 먹는 것</h2>
-          <p className="text-xs text-gray-400 mb-3">해당 없으면 넘어가세요</p>
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="font-bold text-base">못 먹는 것</h2>
+            <span className="text-xs text-gray-400">{cantEat.length}/5</span>
+          </div>
+          <p className="text-xs text-gray-400 mb-3">해당 없으면 넘어가세요 · 최대 5개</p>
           <div className="grid grid-cols-3 gap-2 mb-3">
-            {CANT_EAT_OPTIONS.map(opt => (
-              <button
-                key={opt.id}
-                onClick={() => toggle(cantEat, setCantEat, opt.id)}
-                className={`py-2.5 px-2 rounded-xl border-2 text-sm font-medium transition-colors ${
-                  cantEat.includes(opt.id)
-                    ? 'border-red-400 bg-red-50 text-red-600'
-                    : 'border-gray-100 bg-gray-50 text-gray-600'
-                }`}
-              >
-                {cantEat.includes(opt.id) ? '✕ ' : ''}{opt.label}
-              </button>
-            ))}
+            {CANT_EAT_OPTIONS.map(opt => {
+              const selected = cantEat.includes(opt.id)
+              const disabled = !selected && cantEat.length >= 5
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => toggle(cantEat, setCantEat, opt.id, 5)}
+                  disabled={disabled}
+                  className={`py-2.5 px-2 rounded-xl border-2 text-sm font-medium transition-colors ${
+                    selected
+                      ? 'border-red-400 bg-red-50 text-red-600'
+                      : disabled
+                        ? 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'
+                        : 'border-gray-100 bg-gray-50 text-gray-600'
+                  }`}
+                >
+                  {selected ? '✕ ' : ''}{opt.label}
+                </button>
+              )
+            })}
           </div>
           <input
             type="text"
@@ -156,22 +171,32 @@ export default function RoomPage() {
 
         {/* 오늘 먹기 싫은 것 */}
         <section className="bg-white rounded-2xl p-4 shadow-sm">
-          <h2 className="font-bold text-base mb-1">오늘 먹기 싫은 것</h2>
-          <p className="text-xs text-gray-400 mb-3">해당 없으면 넘어가세요</p>
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="font-bold text-base">오늘 먹기 싫은 것</h2>
+            <span className="text-xs text-gray-400">{dontWant.length}/3</span>
+          </div>
+          <p className="text-xs text-gray-400 mb-3">해당 없으면 넘어가세요 · 최대 3개</p>
           <div className="grid grid-cols-2 gap-2">
-            {DONT_WANT_OPTIONS.map(opt => (
-              <button
-                key={opt.id}
-                onClick={() => toggle(dontWant, setDontWant, opt.id)}
-                className={`py-2.5 px-2 rounded-xl border-2 text-sm font-medium transition-colors ${
-                  dontWant.includes(opt.id)
-                    ? 'border-violet-400 bg-violet-50 text-violet-600'
-                    : 'border-gray-100 bg-gray-50 text-gray-600'
-                }`}
-              >
-                {dontWant.includes(opt.id) ? '✕ ' : ''}{opt.label}
-              </button>
-            ))}
+            {DONT_WANT_OPTIONS.map(opt => {
+              const selected = dontWant.includes(opt.id)
+              const disabled = !selected && dontWant.length >= 3
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => toggle(dontWant, setDontWant, opt.id, 3)}
+                  disabled={disabled}
+                  className={`py-2.5 px-2 rounded-xl border-2 text-sm font-medium transition-colors ${
+                    selected
+                      ? 'border-violet-400 bg-violet-50 text-violet-600'
+                      : disabled
+                        ? 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'
+                        : 'border-gray-100 bg-gray-50 text-gray-600'
+                  }`}
+                >
+                  {selected ? '✕ ' : ''}{opt.label}
+                </button>
+              )
+            })}
           </div>
         </section>
 
