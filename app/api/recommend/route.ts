@@ -151,14 +151,14 @@ function pickMenus(
   const fresh = pool.filter(m => !excludeMenus.includes(m))
   // 새 메뉴가 5개 미만이면 기존 pool에서 보완
   const finalPool = fresh.length >= 5 ? fresh : pool
-  return shuffleAndPick(finalPool, 5)
+  return shuffleAndPick(finalPool, 3)
 }
 
 // ─── 메뉴별 카카오 키워드 검색 ────────────────────────────────────────────────
 async function searchMenuRestaurants(key: string, query: string): Promise<RestaurantItem[]> {
   try {
     const res = await fetch(
-      `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=10`,
+      `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=5`,
       { headers: { Authorization: `KakaoAK ${key}` } }
     )
     const data = await res.json()
