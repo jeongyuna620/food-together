@@ -257,12 +257,30 @@ export async function POST(req: NextRequest) {
     }
 
     const locationText = roomData?.location ?? ''
-    const roomCoords = (roomData?.lat && roomData?.lng)
-      ? { lat: Number(roomData.lat), lng: Number(roomData.lng) }
-      : null
+    const key = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY
+
+    // GPS 좌표 우선, 없으면 위치명을 카카오로 검색해 좌표 추출 (텍스트 입력 정확도 개선)
+    let coords: { lat: number; lng: number } | null =
+      (roomData?.lat && roomData?.lng)
+        ? { lat: Number(roomData.lat), lng: Number(roomData.lng) }
+        : null
+
+    if (!coords && locationText && key) {
+      try {
+        const geoRes = await fetch(
+          `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(locationText)}&size=1`,
+          { headers: { Authorization: `KakaoAK ${key}` } }
+        )
+        const geoData = await geoRes.json()
+        const place = geoData.documents?.[0]
+        if (place?.x && place?.y) {
+          coords = { lat: parseFloat(place.y), lng: parseFloat(place.x) }
+        }
+      } catch { /* 실패 시 텍스트 검색으로 폴백 */ }
+    }
+
     const allCantEat = Array.from(new Set(participants.flatMap((p: { cant_eat?: string[] }) => p.cant_eat ?? [])))
     const allDontWant = Array.from(new Set(participants.flatMap((p: { dont_want?: string[] }) => p.dont_want ?? [])))
-    const key = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY
 
     // 카테고리별 메뉴 태스크 생성 (이전 메뉴 제외하여 새로운 조합 추천)
     type SearchTask = { category: string; menu: string }
@@ -280,11 +298,11 @@ export async function POST(req: NextRequest) {
     if (key) {
       menuResults = await Promise.all(
         tasks.map(t => {
-          // 좌표 있으면 메뉴명만 검색 + 반경/거리순, 없으면 "장소명 메뉴명" 텍스트 검색
-          const query = roomCoords
+          // 좌표 있으면 메뉴명만 + 반경 거리순, 없으면 "장소명 메뉴명" 텍스트 검색
+          const query = coords
             ? t.menu
             : (locationText ? `${locationText} ${t.menu}` : t.menu)
-          return searchMenuRestaurants(key, query, roomCoords ?? undefined)
+          return searchMenuRestaurants(key, query, coords ?? undefined)
         })
       )
     } else {

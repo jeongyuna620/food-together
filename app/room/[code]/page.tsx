@@ -169,11 +169,11 @@ export default function RoomPage() {
         <section className="bg-white rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between mb-1">
             <h2 className="font-bold text-base">오늘 먹기 싫은 음식</h2>
-            <span className="text-xs bg-gray-100 text-gray-500 font-medium px-2 py-0.5 rounded-full">선택 사항</span>
+            <span className="text-xs text-gray-400">{dontWant.length}/2</span>
           </div>
-          <p className="text-sm text-gray-400 mb-3">
-            없으면 선택하지 않고 바로 완료하세요
-            <span className="block text-xs mt-0.5">최대 2개</span>
+          <p className="text-xs mb-3">
+            <span className="text-violet-500 font-semibold">선택 사항</span>
+            <span className="text-gray-400"> · 없으면 건너뛰세요 · 최대 2개</span>
           </p>
           <div className="grid grid-cols-2 gap-2">
             {DONT_WANT_OPTIONS.map(opt => {
