@@ -259,6 +259,8 @@ export default function ResultsPage() {
         p => setVotes(prev => [...prev, p.new as Vote]))
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'votes', filter: `room_code=eq.${code}` },
         p => setVotes(prev => prev.map(v => v.id === (p.new as Vote).id ? p.new as Vote : v)))
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'votes', filter: `room_code=eq.${code}` },
+        p => setVotes(prev => prev.filter(v => v.id !== (p.old as Vote).id)))
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `code=eq.${code}` },
         p => {
           if (p.new.recommendations) {
@@ -273,7 +275,6 @@ export default function ResultsPage() {
   }, [code])
 
   const okCount = (name: string) => votes.filter(v => v.restaurant_name === name && v.vote === 'ok').length
-  const noCount = (name: string) => votes.filter(v => v.restaurant_name === name && v.vote === 'no').length
 
   // 투표 집계를 위해 전체 유니크 식당 수집
   const allRestaurantsMap = new Map<string, RestaurantItem>()
@@ -308,14 +309,22 @@ export default function ResultsPage() {
     )
   }
 
-  const handleVote = async (restaurantName: string, vote: 'ok' | 'no') => {
+  const handleVote = async (restaurantName: string) => {
     if (!myName) return
-    setMyVotes(prev => ({ ...prev, [restaurantName]: vote }))
+    const already = myVotes[restaurantName] === 'ok'
     const existing = votes.find(v => v.participant_name === myName && v.restaurant_name === restaurantName)
-    if (existing) {
-      await supabase.from('votes').update({ vote }).eq('id', existing.id)
+    if (already) {
+      // 이미 OK → 취소
+      setMyVotes(prev => { const next = { ...prev }; delete next[restaurantName]; return next })
+      if (existing) await supabase.from('votes').delete().eq('id', existing.id)
     } else {
-      await supabase.from('votes').insert({ room_code: code, participant_name: myName, restaurant_name: restaurantName, vote })
+      // OK 투표
+      setMyVotes(prev => ({ ...prev, [restaurantName]: 'ok' }))
+      if (existing) {
+        await supabase.from('votes').update({ vote: 'ok' }).eq('id', existing.id)
+      } else {
+        await supabase.from('votes').insert({ room_code: code, participant_name: myName, restaurant_name: restaurantName, vote: 'ok' })
+      }
     }
   }
 
@@ -480,26 +489,23 @@ export default function ResultsPage() {
                   ) : (
                     <div className="divide-y divide-gray-50">
                       {restaurants.map(r => {
-                        const ok = okCount(r.name); const no = noCount(r.name); const myVote = myVotes[r.name]
+                        const ok = okCount(r.name)
+                        const voted = myVotes[r.name] === 'ok'
                         return (
-                          <div key={r.name} className="p-3 space-y-2">
-                            <div className="flex items-start justify-between gap-2">
+                          <div key={r.name} className="p-3">
+                            <div className="flex items-center gap-2">
                               <div className="flex-1 min-w-0">
                                 <p className="font-semibold text-sm leading-snug">{r.name}</p>
                                 {r.address && <p className="text-gray-400 text-xs mt-0.5 truncate">{r.address}</p>}
                                 {r.distance && <p className="text-gray-400 text-xs">{formatDistance(r.distance)}</p>}
                               </div>
                               <a href={kakaoPlaceLink(r)} target="_blank" rel="noopener noreferrer"
-                                className="flex-shrink-0 text-xs text-blue-500 font-medium underline mt-0.5">지도</a>
-                            </div>
-                            <div className="flex gap-2">
-                              <button onClick={() => handleVote(r.name, 'ok')}
-                                className={`flex-1 py-2 rounded-xl font-bold text-sm transition-all active:scale-95 ${myVote === 'ok' ? 'bg-green-500 text-white shadow-sm' : 'bg-gray-100 text-gray-600'}`}>
-                                👍 OK{ok > 0 ? ` (${ok})` : ''}
-                              </button>
-                              <button onClick={() => handleVote(r.name, 'no')}
-                                className={`flex-1 py-2 rounded-xl font-bold text-sm transition-all active:scale-95 ${myVote === 'no' ? 'bg-red-500 text-white shadow-sm' : 'bg-gray-100 text-gray-600'}`}>
-                                👎 NO{no > 0 ? ` (${no})` : ''}
+                                className="flex-shrink-0 text-xs text-blue-500 font-medium underline">지도</a>
+                              <button onClick={() => handleVote(r.name)}
+                                className={`flex-shrink-0 px-4 py-2 rounded-xl font-bold text-sm transition-all active:scale-95 ${
+                                  voted ? 'bg-green-500 text-white shadow-sm' : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                {voted ? `✓ ${ok}` : `👍${ok > 0 ? ` ${ok}` : ''}`}
                               </button>
                             </div>
                           </div>
