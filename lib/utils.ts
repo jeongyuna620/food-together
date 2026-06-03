@@ -38,8 +38,8 @@ export const DONT_WANT_OPTIONS = [
   { id: 'japanese', label: '일식' },
   { id: 'western',  label: '양식' },
   { id: 'bunsik',   label: '분식' },
+  { id: 'asian',    label: '동남아' },
   { id: 'barbeque', label: '고기구이/치킨' },
-  { id: 'soup',     label: '국물류' },
   { id: 'fastfood', label: '패스트푸드' },
 ]
 
@@ -60,7 +60,7 @@ export const CANT_EAT_LABELS: Record<string, string> = {
 
 export const DONT_WANT_LABELS: Record<string, string> = {
   korean: '한식', chinese: '중식', japanese: '일식', western: '양식',
-  bunsik: '분식', barbeque: '고기구이/치킨', soup: '국물류', fastfood: '패스트푸드',
+  bunsik: '분식', asian: '동남아', barbeque: '고기구이/치킨', fastfood: '패스트푸드',
 }
 
 export const BUDGET_LABELS: Record<string, string> = {

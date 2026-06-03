@@ -9,7 +9,7 @@ import type { CategoryRecommendation, MenuRecommendation, RestaurantItem, Vote }
 declare global { interface Window { kakao: any } }
 
 // ─── 클라이언트측 카테고리 정규화 (JS SDK 폴백용) ─────────────────────────────
-const ALLOWED_CATEGORIES = new Set(['한식', '중식', '일식', '양식', '분식', '치킨', '패스트푸드'])
+const ALLOWED_CATEGORIES = new Set(['한식', '중식', '일식', '양식', '분식', '치킨', '패스트푸드', '동남아'])
 
 function normalizeCategory(raw: string): string {
   if (/중국|중식/.test(raw)) return '중식'
@@ -33,6 +33,7 @@ const CATEGORY_MENUS: Record<string, string[]> = {
   분식: ['떡볶이', '순대', '튀김', '김밥', '라볶이', '치즈떡볶이', '쫄면', '핫도그', '어묵탕', '만두'],
   치킨: ['후라이드', '양념치킨', '간장치킨', '반반치킨', '파닭', '마늘치킨', '뿌링클', '허니콤보'],
   패스트푸드: ['버거', '감자튀김', '치킨너겟', '치즈버거', '샌드위치', '랩'],
+  동남아: ['쌀국수', '팟타이', '반미', '분짜', '나시고렝', '똠얌', '반쎄오'],
 }
 const RESTRICT_AVOID: Record<string, string[]> = {
   pork: [
@@ -87,8 +88,6 @@ const DONT_WANT_AVOID: Record<string, string[]> = {
              '후라이드', '양념치킨', '간장치킨', '반반치킨', '파닭', '오야코동',
              '닭볶음탕', '두루치기', '치킨너겟', '닭갈비', '야키토리', '보쌈', '족발',
              '양꼬치', '마늘치킨', '뿌링클', '허니콤보'],
-  soup:     ['된장찌개', '순두부찌개', '갈비탕', '칼국수', '라멘', '우동', '짬뽕', '나베',
-             '김치찌개', '육개장', '해장국', '훠궈'],
 }
 const DISLIKE_MAP: Record<string, string[]> = {
   korean:   ['한식'],
@@ -96,6 +95,7 @@ const DISLIKE_MAP: Record<string, string[]> = {
   chinese:  ['중식'],
   western:  ['양식'],
   bunsik:   ['분식'],
+  asian:    ['동남아'],
   barbeque: ['치킨'],
   fastfood: ['패스트푸드'],
 }
