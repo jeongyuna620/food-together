@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { CANT_EAT_OPTIONS, DONT_WANT_OPTIONS, BUDGET_OPTIONS } from '@/lib/utils'
+import { CANT_EAT_OPTIONS, DONT_WANT_OPTIONS } from '@/lib/utils'
 import type { Room } from '@/types'
 
 export default function RoomPage() {
@@ -18,7 +18,6 @@ export default function RoomPage() {
   const [cantEat, setCantEat] = useState<string[]>([])
   const [cantEatCustom, setCantEatCustom] = useState('')
   const [dontWant, setDontWant] = useState<string[]>([])
-  const [budget, setBudget] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -34,7 +33,6 @@ export default function RoomPage() {
 
     const storedName = localStorage.getItem('participantName')
     const storedCode = localStorage.getItem('lastRoomCode')
-    // 같은 방에서 이미 완료한 경우에만 대기실로 이동 (다른 방 기록은 무시)
     if (storedName && storedCode === code) {
       setName(storedName)
       const { data: existing } = await supabase
@@ -56,7 +54,6 @@ export default function RoomPage() {
 
   const handleSubmit = async () => {
     if (!name.trim()) { setError('이름을 입력해주세요'); return }
-    if (!budget) { setError('예산을 선택해주세요'); return }
     setError('')
     setIsSubmitting(true)
 
@@ -69,7 +66,6 @@ export default function RoomPage() {
       const payload = {
         cant_eat: [...cantEat, ...customItems],
         dont_want: dontWant,
-        budget,
         lat: null,
         lng: null,
         completed: true,
@@ -131,10 +127,10 @@ export default function RoomPage() {
           />
         </section>
 
-        {/* 못 먹는 것 */}
+        {/* 못 먹는 음식 */}
         <section className="bg-white rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between mb-1">
-            <h2 className="font-bold text-base">못 먹는 것</h2>
+            <h2 className="font-bold text-base">못 먹는 음식</h2>
             <span className="text-xs text-gray-400">{cantEat.length}/3</span>
           </div>
           <p className="text-xs text-gray-400 mb-3">해당 없으면 넘어가세요 · 최대 3개</p>
@@ -169,13 +165,16 @@ export default function RoomPage() {
           />
         </section>
 
-        {/* 오늘 먹기 싫은 것 */}
+        {/* 오늘 먹기 싫은 음식 */}
         <section className="bg-white rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between mb-1">
-            <h2 className="font-bold text-base">오늘 먹기 싫은 것</h2>
-            <span className="text-xs text-gray-400">{dontWant.length}/2</span>
+            <h2 className="font-bold text-base">오늘 먹기 싫은 음식</h2>
+            <span className="text-xs bg-gray-100 text-gray-500 font-medium px-2 py-0.5 rounded-full">선택 사항</span>
           </div>
-          <p className="text-xs text-gray-400 mb-3">해당 없으면 넘어가세요 · 최대 2개</p>
+          <p className="text-sm text-gray-400 mb-3">
+            없으면 선택하지 않고 바로 완료하세요
+            <span className="block text-xs mt-0.5">최대 2개</span>
+          </p>
           <div className="grid grid-cols-2 gap-2">
             {DONT_WANT_OPTIONS.map(opt => {
               const selected = dontWant.includes(opt.id)
@@ -197,26 +196,6 @@ export default function RoomPage() {
                 </button>
               )
             })}
-          </div>
-        </section>
-
-        {/* 예산 */}
-        <section className="bg-white rounded-2xl p-4 shadow-sm">
-          <h2 className="font-bold text-base mb-3">예산 (1인 기준)</h2>
-          <div className="space-y-2">
-            {BUDGET_OPTIONS.map(opt => (
-              <button
-                key={opt.id}
-                onClick={() => setBudget(opt.id)}
-                className={`w-full py-3 px-4 rounded-xl border-2 text-left font-medium text-sm transition-colors ${
-                  budget === opt.id
-                    ? 'border-violet-400 bg-violet-50 text-violet-700'
-                    : 'border-gray-100 bg-gray-50 text-gray-600'
-                }`}
-              >
-                {budget === opt.id && '✓ '}{opt.label}
-              </button>
-            ))}
           </div>
         </section>
 

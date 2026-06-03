@@ -86,7 +86,7 @@ export default function HomePage() {
           <div className="text-6xl mb-4">🍽️</div>
           <h1 className="text-5xl font-black text-white mb-2 tracking-tight">Eatween</h1>
           <p className="text-violet-200 text-base leading-relaxed">
-            각자의 취향을 입력하면<br />딱 맞는 식당을 추천해줘요
+            각자의 조건을 입력하면<br />딱 맞는 식당을 추천해줘요
           </p>
         </div>
 
