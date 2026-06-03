@@ -271,14 +271,35 @@ export async function POST(req: NextRequest) {
 
     if (!coords && locationText && key) {
       try {
-        const geoRes = await fetch(
-          `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(locationText)}&size=1`,
-          { headers: { Authorization: `KakaoAK ${key}` } }
-        )
-        const geoData = await geoRes.json()
-        const place = geoData.documents?.[0]
+        const headers = { Authorization: `KakaoAK ${key}` }
+        const base = `https://dapi.kakao.com/v2/local/search/keyword.json`
+
+        // 1순위: 지하철역(SW8)으로 검색 — "홍대입구역" 같은 역명에 최적
+        let res = await fetch(`${base}?query=${encodeURIComponent(locationText)}&category_group_code=SW8&size=1`, { headers })
+        let data = await res.json()
+        let place = data.documents?.[0]
+
+        // 2순위: 관광명소·랜드마크(AT4) — "신촌", "홍대" 같은 지역명
+        if (!place?.x) {
+          res = await fetch(`${base}?query=${encodeURIComponent(locationText)}&category_group_code=AT4&size=1`, { headers })
+          data = await res.json()
+          place = data.documents?.[0]
+        }
+
+        // 3순위: 카테고리 무관 일반 검색 — 동네명 등 나머지
+        if (!place?.x) {
+          res = await fetch(`${base}?query=${encodeURIComponent(locationText)}&size=1`, { headers })
+          data = await res.json()
+          place = data.documents?.[0]
+        }
+
         if (place?.x && place?.y) {
-          coords = { lat: parseFloat(place.y), lng: parseFloat(place.x) }
+          const lat = parseFloat(place.y)
+          const lng = parseFloat(place.x)
+          // 한국 범위(위도 33-38, 경도 124-130) 벗어나면 무시
+          if (lat >= 33 && lat <= 38 && lng >= 124 && lng <= 130) {
+            coords = { lat, lng }
+          }
         }
       } catch { /* 실패 시 텍스트 검색으로 폴백 */ }
     }
