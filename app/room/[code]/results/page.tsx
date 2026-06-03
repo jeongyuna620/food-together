@@ -282,14 +282,25 @@ export default function ResultsPage() {
   })))
   const allRestaurants = Array.from(allRestaurantsMap.values())
 
-  const winnerEntry = allRestaurants.length > 0
-    ? allRestaurants.reduce<{ r: RestaurantItem; ok: number } | null>((best, r) => {
-        const ok = okCount(r.name); return ok > 0 && (!best || ok > best.ok) ? { r, ok } : best
-      }, null)
-    : null
-  const winnerGroup = winnerEntry
-    ? groups.find(g => g.menus.some(m => m.restaurants.some(r => r.name === winnerEntry.r.name)))
-    : null
+  // 1~3위 공동순위 포함 계산
+  const restaurantRankings = (() => {
+    const sorted = allRestaurants
+      .map(r => ({ r, ok: okCount(r.name) }))
+      .filter(e => e.ok > 0)
+      .sort((a, b) => b.ok - a.ok)
+    let rank = 0; let prevOk = -1; let pos = 0
+    return sorted.map(entry => {
+      pos++
+      if (entry.ok !== prevOk) { rank = pos; prevOk = entry.ok }
+      return { ...entry, rank }
+    }).filter(e => e.rank <= 3)
+  })()
+  const rankGroups = [1, 2, 3]
+    .map(n => restaurantRankings.filter(e => e.rank === n))
+    .filter(g => g.length > 0)
+  const getRestaurantCategory = (name: string) =>
+    groups.find(g => g.menus.some(m => m.restaurants.some(r => r.name === name)))?.category ?? ''
+  const rankEmoji: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
 
   const handleMenuClick = (category: string, menu: string) => {
     setSelectedMenu(prev =>
@@ -366,19 +377,38 @@ export default function ResultsPage() {
           </div>
         )}
 
-        {/* 현재 1위 배너 */}
-        {winnerEntry && winnerGroup && (
-          <div className="bg-gradient-to-r from-yellow-400 to-amber-400 rounded-2xl p-4 text-white shadow-md">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xl">👑</span>
-              <span className="font-bold text-sm">현재 1위</span>
+        {/* 현재 순위 배너 (1~3위, 공동순위 포함) */}
+        {rankGroups.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="bg-gradient-to-r from-yellow-400 to-amber-400 px-4 py-3">
+              <p className="text-white font-black text-base">🏆 현재 순위</p>
             </div>
-            <p className="text-xl font-black mb-0.5">{winnerEntry.r.name}</p>
-            <p className="text-yellow-100 text-sm mb-3">OK {winnerEntry.ok}표 · {winnerGroup.category}</p>
-            <a href={kakaoNavLink(winnerEntry.r)} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 bg-white text-amber-600 font-bold px-4 py-2 rounded-xl text-sm shadow-sm">
-              🗺️ 카카오맵 길찾기
-            </a>
+            <div className="divide-y divide-gray-50">
+              {rankGroups.map(entries => {
+                const rankNum = entries[0].rank
+                const isTie = entries.length > 1
+                return (
+                  <div key={rankNum} className="px-4 py-3">
+                    <p className="text-sm font-bold text-gray-700 mb-2">
+                      {rankEmoji[rankNum]} {isTie ? `공동 ${rankNum}위` : `${rankNum}위`}
+                      <span className="text-gray-400 font-normal ml-1.5">OK {entries[0].ok}표</span>
+                    </p>
+                    {entries.map(entry => (
+                      <div key={entry.r.name} className="flex items-center justify-between ml-6 mb-1.5">
+                        <div>
+                          <p className="font-semibold text-sm leading-tight">{entry.r.name}</p>
+                          <p className="text-xs text-gray-400">{getRestaurantCategory(entry.r.name)}</p>
+                        </div>
+                        <a href={kakaoNavLink(entry.r)} target="_blank" rel="noopener noreferrer"
+                          className="flex-shrink-0 text-xs text-violet-600 font-medium border border-violet-200 px-2.5 py-1 rounded-lg ml-2">
+                          🗺️ 길찾기
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
 
