@@ -96,12 +96,13 @@ export default function HomePage() {
             <h2 className="font-bold text-xl text-center mb-4">방 만들기</h2>
 
             {/* 이름 */}
-            <label className="block text-sm font-semibold text-gray-600 mb-1">이름</label>
+            <label className="block text-sm font-semibold text-gray-600 mb-0.5">방장 이름</label>
+            <p className="text-xs text-gray-400 mb-1.5">본인 이름을 입력하세요. 결과 화면에 표시됩니다.</p>
             <input
               type="text"
               value={hostName}
               onChange={e => setHostName(e.target.value)}
-              placeholder="참여자에게 표시될 이름"
+              placeholder="이름 입력"
               maxLength={12}
               autoFocus
               className="w-full border-2 border-gray-100 rounded-2xl p-3 text-base font-medium focus:outline-none focus:border-violet-400 mb-5"
@@ -140,7 +141,7 @@ export default function HomePage() {
                   value={location}
                   onChange={e => setLocation(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleCreate()}
-                  placeholder="지역명 또는 지하철역명 입력"
+                  placeholder="동네명 또는 지하철역명 입력"
                   maxLength={30}
                   className="w-full border-2 border-gray-100 rounded-2xl p-3 text-base font-medium focus:outline-none focus:border-violet-400"
                 />
