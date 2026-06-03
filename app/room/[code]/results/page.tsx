@@ -317,26 +317,12 @@ export default function ResultsPage() {
   }
 
   const handleVote = async (restaurantName: string) => {
-    if (!myName) return
-    const already = myVotes[restaurantName] === 'ok'
-
-    if (already) {
-      // 취소: 로컬 즉시 반영 + 복합키로 DB 삭제
-      setMyVotes(prev => { const n = { ...prev }; delete n[restaurantName]; return n })
-      setVotes(prev => prev.filter(v => !(v.participant_name === myName && v.restaurant_name === restaurantName)))
-      await supabase.from('votes')
-        .delete()
-        .eq('room_code', code)
-        .eq('participant_name', myName)
-        .eq('restaurant_name', restaurantName)
-    } else {
-      // 투표: upsert로 중복 방지
-      setMyVotes(prev => ({ ...prev, [restaurantName]: 'ok' }))
-      await supabase.from('votes').upsert(
-        { room_code: code, participant_name: myName, restaurant_name: restaurantName, vote: 'ok' },
-        { onConflict: 'room_code,participant_name,restaurant_name' }
-      )
-    }
+    if (!myName || myVotes[restaurantName] === 'ok') return
+    setMyVotes(prev => ({ ...prev, [restaurantName]: 'ok' }))
+    await supabase.from('votes').upsert(
+      { room_code: code, participant_name: myName, restaurant_name: restaurantName, vote: 'ok' },
+      { onConflict: 'room_code,participant_name,restaurant_name' }
+    )
   }
 
   const handleReRecommend = async () => {
@@ -512,9 +498,11 @@ export default function ResultsPage() {
                               </div>
                               <a href={kakaoPlaceLink(r)} target="_blank" rel="noopener noreferrer"
                                 className="flex-shrink-0 text-xs text-blue-500 font-medium underline">지도</a>
-                              <button onClick={() => handleVote(r.name)}
-                                className={`flex-shrink-0 px-4 py-2 rounded-xl font-bold text-sm transition-all active:scale-95 ${
-                                  voted ? 'bg-green-500 text-white shadow-sm' : 'bg-gray-100 text-gray-600'
+                              <button
+                                onClick={() => handleVote(r.name)}
+                                disabled={voted}
+                                className={`flex-shrink-0 px-4 py-2 rounded-xl font-bold text-sm transition-all active:scale-95 disabled:cursor-default ${
+                                  voted ? 'bg-green-500 text-white shadow-sm' : 'bg-gray-100 text-gray-600 active:scale-95'
                                 }`}>
                                 {voted ? `✓ ${ok}` : `👍${ok > 0 ? ` ${ok}` : ''}`}
                               </button>
