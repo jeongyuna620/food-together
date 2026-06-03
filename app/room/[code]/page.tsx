@@ -129,24 +129,20 @@ export default function RoomPage() {
         <section className="bg-white rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between mb-1">
             <h2 className="font-bold text-base">못 먹는 음식</h2>
-            <span className="text-xs text-gray-400">{cantEat.length}/3</span>
+            {cantEat.length > 0 && <span className="text-xs text-gray-400">{cantEat.length}개 선택</span>}
           </div>
-          <p className="text-xs text-gray-400 mb-3">없으면 건너뛰세요 · 최대 3개</p>
+          <p className="text-xs text-gray-400 mb-3">없으면 건너뛰세요</p>
           <div className="grid grid-cols-3 gap-2 mb-3">
             {CANT_EAT_OPTIONS.map(opt => {
               const selected = cantEat.includes(opt.id)
-              const disabled = !selected && cantEat.length >= 3
               return (
                 <button
                   key={opt.id}
-                  onClick={() => toggle(cantEat, setCantEat, opt.id, 3)}
-                  disabled={disabled}
+                  onClick={() => toggle(cantEat, setCantEat, opt.id)}
                   className={`py-2.5 px-2 rounded-xl border-2 text-sm font-medium transition-colors ${
                     selected
                       ? 'border-red-400 bg-red-50 text-red-600'
-                      : disabled
-                        ? 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'
-                        : 'border-gray-100 bg-gray-50 text-gray-600'
+                      : 'border-gray-100 bg-gray-50 text-gray-600'
                   }`}
                 >
                   {selected ? '✕ ' : ''}{opt.label}
@@ -160,20 +156,20 @@ export default function RoomPage() {
         <section className="bg-white rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between mb-1">
             <h2 className="font-bold text-base">오늘 먹기 싫은 음식</h2>
-            <span className="text-xs text-gray-400">{dontWant.length}/2</span>
+            <span className="text-xs text-gray-400">{dontWant.length}/3</span>
           </div>
-          <p className="text-xs mb-3">
-            <span className="text-violet-500 font-semibold">선택 사항</span>
-            <span className="text-gray-400"> · 없으면 건너뛰세요 · 최대 2개</span>
+          <p className="text-sm font-medium mb-3">
+            <span className="text-violet-500">선택 사항</span>
+            <span className="text-gray-400 font-normal text-xs"> · 없으면 선택 없이 바로 완료하세요 · 최대 3개</span>
           </p>
           <div className="grid grid-cols-2 gap-2">
             {DONT_WANT_OPTIONS.map(opt => {
               const selected = dontWant.includes(opt.id)
-              const disabled = !selected && dontWant.length >= 2
+              const disabled = !selected && dontWant.length >= 3
               return (
                 <button
                   key={opt.id}
-                  onClick={() => toggle(dontWant, setDontWant, opt.id, 2)}
+                  onClick={() => toggle(dontWant, setDontWant, opt.id, 3)}
                   disabled={disabled}
                   className={`py-2.5 px-2 rounded-xl border-2 text-sm font-medium transition-colors ${
                     selected
