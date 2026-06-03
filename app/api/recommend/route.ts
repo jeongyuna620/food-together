@@ -262,47 +262,12 @@ export async function POST(req: NextRequest) {
     const locationText = roomData?.location ?? ''
     const key = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY
 
-    // 좌표 결정: GPS 저장값 우선, 없으면 위치명 geocoding
-    // 좌표가 있어야 반경 필터가 작동해 타지역 결과가 섞이지 않음
-    let coords: { lat: number; lng: number } | null =
+    // GPS 모드로 생성된 방만 좌표 사용
+    // 텍스트 입력은 "홍대입구역 된장찌개" 형태의 텍스트 검색으로 Kakao가 지역 인식
+    const coords: { lat: number; lng: number } | null =
       (roomData?.lat && roomData?.lng)
         ? { lat: Number(roomData.lat), lng: Number(roomData.lng) }
         : null
-
-    if (!coords && locationText && key) {
-      try {
-        const headers = { Authorization: `KakaoAK ${key}` }
-        const base = `https://dapi.kakao.com/v2/local/search/keyword.json`
-
-        // 1순위: 지하철역(SW8)으로 검색 — "홍대입구역" 같은 역명에 최적
-        let res = await fetch(`${base}?query=${encodeURIComponent(locationText)}&category_group_code=SW8&size=1`, { headers })
-        let data = await res.json()
-        let place = data.documents?.[0]
-
-        // 2순위: 관광명소·랜드마크(AT4) — "신촌", "홍대" 같은 지역명
-        if (!place?.x) {
-          res = await fetch(`${base}?query=${encodeURIComponent(locationText)}&category_group_code=AT4&size=1`, { headers })
-          data = await res.json()
-          place = data.documents?.[0]
-        }
-
-        // 3순위: 카테고리 무관 일반 검색 — 동네명 등 나머지
-        if (!place?.x) {
-          res = await fetch(`${base}?query=${encodeURIComponent(locationText)}&size=1`, { headers })
-          data = await res.json()
-          place = data.documents?.[0]
-        }
-
-        if (place?.x && place?.y) {
-          const lat = parseFloat(place.y)
-          const lng = parseFloat(place.x)
-          // 한국 범위(위도 33-38, 경도 124-130) 벗어나면 무시
-          if (lat >= 33 && lat <= 38 && lng >= 124 && lng <= 130) {
-            coords = { lat, lng }
-          }
-        }
-      } catch { /* 실패 시 텍스트 검색으로 폴백 */ }
-    }
 
     const allCantEat = Array.from(new Set(participants.flatMap((p: { cant_eat?: string[] }) => p.cant_eat ?? [])))
     const allDontWant = Array.from(new Set(participants.flatMap((p: { dont_want?: string[] }) => p.dont_want ?? [])))
