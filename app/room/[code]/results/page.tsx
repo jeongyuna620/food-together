@@ -314,8 +314,9 @@ export default function ResultsPage() {
     const already = myVotes[restaurantName] === 'ok'
     const existing = votes.find(v => v.participant_name === myName && v.restaurant_name === restaurantName)
     if (already) {
-      // 이미 OK → 취소
+      // 취소: 로컬 상태 즉시 반영 (DELETE 구독이 필터 문제로 안 올 수 있어 직접 처리)
       setMyVotes(prev => { const next = { ...prev }; delete next[restaurantName]; return next })
+      setVotes(prev => prev.filter(v => !(v.participant_name === myName && v.restaurant_name === restaurantName)))
       if (existing) await supabase.from('votes').delete().eq('id', existing.id)
     } else {
       // OK 투표
