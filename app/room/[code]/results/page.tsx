@@ -256,7 +256,14 @@ export default function ResultsPage() {
     const ch = supabase
       .channel(`results-${code}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'votes', filter: `room_code=eq.${code}` },
-        p => setVotes(prev => [...prev, p.new as Vote]))
+        p => setVotes(prev => {
+          const v = p.new as Vote
+          // 이미 같은 ID가 있으면 무시 (중복 방지)
+          if (prev.some(x => x.id === v.id)) return prev
+          // 같은 (참여자, 식당) 조합의 기존 항목 교체
+          const filtered = prev.filter(x => !(x.participant_name === v.participant_name && x.restaurant_name === v.restaurant_name))
+          return [...filtered, v]
+        }))
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'votes', filter: `room_code=eq.${code}` },
         p => setVotes(prev => prev.map(v => v.id === (p.new as Vote).id ? p.new as Vote : v)))
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'votes', filter: `room_code=eq.${code}` },
@@ -312,20 +319,23 @@ export default function ResultsPage() {
   const handleVote = async (restaurantName: string) => {
     if (!myName) return
     const already = myVotes[restaurantName] === 'ok'
-    const existing = votes.find(v => v.participant_name === myName && v.restaurant_name === restaurantName)
+
     if (already) {
-      // 취소: 로컬 상태 즉시 반영 (DELETE 구독이 필터 문제로 안 올 수 있어 직접 처리)
-      setMyVotes(prev => { const next = { ...prev }; delete next[restaurantName]; return next })
+      // 취소: 로컬 즉시 반영 + 복합키로 DB 삭제
+      setMyVotes(prev => { const n = { ...prev }; delete n[restaurantName]; return n })
       setVotes(prev => prev.filter(v => !(v.participant_name === myName && v.restaurant_name === restaurantName)))
-      if (existing) await supabase.from('votes').delete().eq('id', existing.id)
+      await supabase.from('votes')
+        .delete()
+        .eq('room_code', code)
+        .eq('participant_name', myName)
+        .eq('restaurant_name', restaurantName)
     } else {
-      // OK 투표
+      // 투표: upsert로 중복 방지
       setMyVotes(prev => ({ ...prev, [restaurantName]: 'ok' }))
-      if (existing) {
-        await supabase.from('votes').update({ vote: 'ok' }).eq('id', existing.id)
-      } else {
-        await supabase.from('votes').insert({ room_code: code, participant_name: myName, restaurant_name: restaurantName, vote: 'ok' })
-      }
+      await supabase.from('votes').upsert(
+        { room_code: code, participant_name: myName, restaurant_name: restaurantName, vote: 'ok' },
+        { onConflict: 'room_code,participant_name,restaurant_name' }
+      )
     }
   }
 
