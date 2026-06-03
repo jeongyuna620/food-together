@@ -262,11 +262,26 @@ export async function POST(req: NextRequest) {
     const locationText = roomData?.location ?? ''
     const key = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY
 
-    // GPS 모드로 생성된 방만 좌표 사용, 텍스트 입력은 텍스트 검색 그대로 유지
-    const coords: { lat: number; lng: number } | null =
+    // 좌표 결정: GPS 저장값 우선, 없으면 위치명 geocoding
+    // 좌표가 있어야 반경 필터가 작동해 타지역 결과가 섞이지 않음
+    let coords: { lat: number; lng: number } | null =
       (roomData?.lat && roomData?.lng)
         ? { lat: Number(roomData.lat), lng: Number(roomData.lng) }
         : null
+
+    if (!coords && locationText && key) {
+      try {
+        const geoRes = await fetch(
+          `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(locationText)}&size=1`,
+          { headers: { Authorization: `KakaoAK ${key}` } }
+        )
+        const geoData = await geoRes.json()
+        const place = geoData.documents?.[0]
+        if (place?.x && place?.y) {
+          coords = { lat: parseFloat(place.y), lng: parseFloat(place.x) }
+        }
+      } catch { /* 실패 시 텍스트 검색으로 폴백 */ }
+    }
 
     const allCantEat = Array.from(new Set(participants.flatMap((p: { cant_eat?: string[] }) => p.cant_eat ?? [])))
     const allDontWant = Array.from(new Set(participants.flatMap((p: { dont_want?: string[] }) => p.dont_want ?? [])))
