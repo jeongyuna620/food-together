@@ -15,7 +15,7 @@ function generateCode(): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const { host_name, location, lat, lng } = await req.json()
+    const { host_name, location } = await req.json()
     if (!host_name?.trim()) {
       return NextResponse.json({ error: '이름을 입력해주세요' }, { status: 400 })
     }
@@ -27,17 +27,12 @@ export async function POST(req: NextRequest) {
       code = generateCode()
     }
 
-    const insertData: Record<string, unknown> = {
+    const { error } = await supabase.from('rooms').insert({
       code,
       host_name: host_name.trim(),
       location: location?.trim() ?? '',
       status: 'waiting',
-    }
-    // lat/lng는 GPS 모드일 때만 포함 (컬럼 없는 환경에서도 텍스트 입력은 동작하도록)
-    if (lat != null) insertData.lat = lat
-    if (lng != null) insertData.lng = lng
-
-    const { error } = await supabase.from('rooms').insert(insertData)
+    })
     if (error) throw error
 
     return NextResponse.json({ code })

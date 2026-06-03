@@ -195,18 +195,12 @@ function pickMenus(
 }
 
 // ─── 메뉴별 카카오 키워드 검색 ────────────────────────────────────────────────
-async function searchMenuRestaurants(
-  key: string,
-  query: string,
-  coords?: { lat: number; lng: number },
-): Promise<RestaurantItem[]> {
+async function searchMenuRestaurants(key: string, query: string): Promise<RestaurantItem[]> {
   try {
-    let url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=5`
-    if (coords) {
-      // 좌표가 있으면 반경 2km 내 거리순 정렬
-      url += `&x=${coords.lng}&y=${coords.lat}&radius=2000&sort=distance`
-    }
-    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } })
+    const res = await fetch(
+      `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=5`,
+      { headers: { Authorization: `KakaoAK ${key}` } }
+    )
     const data = await res.json()
     return (data.documents ?? []).map((d: KakaoDoc) => ({
       name: d.place_name,
@@ -249,7 +243,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const [{ data: roomData }, { data: participants, error: pErr }] = await Promise.all([
-      supabase.from('rooms').select('location, lat, lng').eq('code', room_code).single(),
+      supabase.from('rooms').select('location').eq('code', room_code).single(),
       supabase.from('participants').select('*').eq('room_code', room_code).eq('completed', true),
     ])
 
@@ -261,13 +255,6 @@ export async function POST(req: NextRequest) {
 
     const locationText = roomData?.location ?? ''
     const key = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY
-
-    // GPS 모드로 생성된 방만 좌표 사용
-    // 텍스트 입력은 "홍대입구역 된장찌개" 형태의 텍스트 검색으로 Kakao가 지역 인식
-    const coords: { lat: number; lng: number } | null =
-      (roomData?.lat && roomData?.lng)
-        ? { lat: Number(roomData.lat), lng: Number(roomData.lng) }
-        : null
 
     const allCantEat = Array.from(new Set(participants.flatMap((p: { cant_eat?: string[] }) => p.cant_eat ?? [])))
     const allDontWant = Array.from(new Set(participants.flatMap((p: { dont_want?: string[] }) => p.dont_want ?? [])))
@@ -287,12 +274,9 @@ export async function POST(req: NextRequest) {
 
     if (key) {
       menuResults = await Promise.all(
-        tasks.map(t => {
-          // 항상 "장소명 메뉴명" 쿼리 사용 (Kakao NLP가 지역+음식 맥락 파악)
-          // 좌표가 있으면 추가로 거리순 정렬 적용
-          const query = locationText ? `${locationText} ${t.menu}` : t.menu
-          return searchMenuRestaurants(key, query, coords ?? undefined)
-        })
+        tasks.map(t =>
+          searchMenuRestaurants(key, locationText ? `${locationText} ${t.menu}` : t.menu)
+        )
       )
     } else {
       isDummy = true
