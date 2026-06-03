@@ -301,10 +301,9 @@ export async function POST(req: NextRequest) {
     if (key) {
       menuResults = await Promise.all(
         tasks.map(t => {
-          // 좌표 있으면 메뉴명만 + 반경 거리순, 없으면 "장소명 메뉴명" 텍스트 검색
-          const query = coords
-            ? t.menu
-            : (locationText ? `${locationText} ${t.menu}` : t.menu)
+          // 항상 "장소명 메뉴명" 쿼리 사용 (Kakao NLP가 지역+음식 맥락 파악)
+          // 좌표가 있으면 추가로 거리순 정렬 적용
+          const query = locationText ? `${locationText} ${t.menu}` : t.menu
           return searchMenuRestaurants(key, query, coords ?? undefined)
         })
       )
