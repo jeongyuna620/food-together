@@ -15,7 +15,7 @@ function generateCode(): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const { host_name, location } = await req.json()
+    const { host_name, location, lat, lng } = await req.json()
     if (!host_name?.trim()) {
       return NextResponse.json({ error: '이름을 입력해주세요' }, { status: 400 })
     }
@@ -31,6 +31,8 @@ export async function POST(req: NextRequest) {
       code,
       host_name: host_name.trim(),
       location: location?.trim() ?? '',
+      lat: lat ?? null,
+      lng: lng ?? null,
       status: 'waiting',
     })
     if (error) throw error

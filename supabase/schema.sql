@@ -5,13 +5,21 @@
 
 -- 1. rooms
 CREATE TABLE rooms (
-  code          TEXT PRIMARY KEY,
-  host_name     TEXT NOT NULL,
-  status        TEXT DEFAULT 'waiting'
-                  CHECK (status IN ('waiting', 'recommending', 'results')),
+  code            TEXT PRIMARY KEY,
+  host_name       TEXT NOT NULL,
+  location        TEXT DEFAULT '',
+  lat             FLOAT,
+  lng             FLOAT,
+  status          TEXT DEFAULT 'waiting'
+                    CHECK (status IN ('waiting', 'recommending', 'results')),
   recommendations JSONB,
-  created_at    TIMESTAMPTZ DEFAULT NOW()
+  created_at      TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- ※ 기존 테이블에 컬럼 추가 시 (이미 rooms 테이블이 있는 경우)
+-- ALTER TABLE rooms ADD COLUMN IF NOT EXISTS location TEXT DEFAULT '';
+-- ALTER TABLE rooms ADD COLUMN IF NOT EXISTS lat FLOAT;
+-- ALTER TABLE rooms ADD COLUMN IF NOT EXISTS lng FLOAT;
 
 -- 2. participants
 CREATE TABLE participants (

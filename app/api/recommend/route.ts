@@ -192,12 +192,18 @@ function pickMenus(
 }
 
 // ─── 메뉴별 카카오 키워드 검색 ────────────────────────────────────────────────
-async function searchMenuRestaurants(key: string, query: string): Promise<RestaurantItem[]> {
+async function searchMenuRestaurants(
+  key: string,
+  query: string,
+  coords?: { lat: number; lng: number },
+): Promise<RestaurantItem[]> {
   try {
-    const res = await fetch(
-      `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=5`,
-      { headers: { Authorization: `KakaoAK ${key}` } }
-    )
+    let url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=5`
+    if (coords) {
+      // 좌표가 있으면 반경 2km 내 거리순 정렬
+      url += `&x=${coords.lng}&y=${coords.lat}&radius=2000&sort=distance`
+    }
+    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } })
     const data = await res.json()
     return (data.documents ?? []).map((d: KakaoDoc) => ({
       name: d.place_name,
@@ -240,7 +246,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const [{ data: roomData }, { data: participants, error: pErr }] = await Promise.all([
-      supabase.from('rooms').select('location').eq('code', room_code).single(),
+      supabase.from('rooms').select('location, lat, lng').eq('code', room_code).single(),
       supabase.from('participants').select('*').eq('room_code', room_code).eq('completed', true),
     ])
 
@@ -251,6 +257,9 @@ export async function POST(req: NextRequest) {
     }
 
     const locationText = roomData?.location ?? ''
+    const roomCoords = (roomData?.lat && roomData?.lng)
+      ? { lat: Number(roomData.lat), lng: Number(roomData.lng) }
+      : null
     const allCantEat = Array.from(new Set(participants.flatMap((p: { cant_eat?: string[] }) => p.cant_eat ?? [])))
     const allDontWant = Array.from(new Set(participants.flatMap((p: { dont_want?: string[] }) => p.dont_want ?? [])))
     const key = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY
@@ -270,9 +279,13 @@ export async function POST(req: NextRequest) {
 
     if (key) {
       menuResults = await Promise.all(
-        tasks.map(t =>
-          searchMenuRestaurants(key, locationText ? `${locationText} ${t.menu}` : t.menu)
-        )
+        tasks.map(t => {
+          // 좌표 있으면 메뉴명만 검색 + 반경/거리순, 없으면 "장소명 메뉴명" 텍스트 검색
+          const query = roomCoords
+            ? t.menu
+            : (locationText ? `${locationText} ${t.menu}` : t.menu)
+          return searchMenuRestaurants(key, query, roomCoords ?? undefined)
+        })
       )
     } else {
       isDummy = true
