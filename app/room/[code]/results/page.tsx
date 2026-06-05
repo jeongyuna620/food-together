@@ -205,6 +205,7 @@ export default function ResultsPage() {
   const [selectedMenu, setSelectedMenu] = useState<{ category: string; menu: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [searching, setSearching] = useState(false)
+  const [showMore, setShowMore] = useState(false)
   const [reRecommending, setReRecommending] = useState(false)
 
   useEffect(() => {
@@ -418,126 +419,147 @@ export default function ResultsPage() {
           </div>
         )}
 
-        {/* 카테고리 카드 — 전체 표시 (matchCount 높은 순 정렬) */}
-        {groups.map(group => {
-          const isFullMatch = group.matchCount === group.totalCount
-          const isBlocked = group.matchCount === 0   // 모두 싫다고 한 카테고리
-          const isOpen = !isBlocked && selectedMenu?.category === group.category
-          const selectedMenuData = isOpen
-            ? group.menus.find(m => m.name === selectedMenu?.menu) ?? null
-            : null
-          const restaurants = selectedMenuData?.restaurants ?? []
+        {/* 카테고리 카드 렌더 함수 */}
+        {(() => {
+          const renderCard = (group: CategoryRecommendation) => {
+            const isFullMatch = group.matchCount === group.totalCount
+            const isBlocked = group.matchCount === 0
+            const isOpen = !isBlocked && selectedMenu?.category === group.category
+            const selectedMenuData = isOpen
+              ? group.menus.find(m => m.name === selectedMenu?.menu) ?? null
+              : null
+            const restaurants = (selectedMenuData?.restaurants ?? []).slice(0, 3)
+            const visibleMenus = group.menus.slice(0, 2)
 
-          return (
-            <div key={group.category} className="bg-white rounded-2xl shadow-sm overflow-hidden">
-              {/* 카테고리 헤더 */}
-              <div className={`px-4 pt-4 ${isBlocked ? 'pb-4' : 'pb-3'}`}>
-                <div className="flex items-center gap-2 mb-3">
-                  <h2 className={`font-bold text-base ${isBlocked ? 'text-gray-400' : ''}`}>{group.category}</h2>
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                    isFullMatch ? 'bg-green-100 text-green-700' :
-                    isBlocked   ? 'bg-red-100 text-red-400'    : 'bg-violet-100 text-violet-700'
-                  }`}>
-                    {isFullMatch ? '✓ 모두 가능' : isBlocked ? '❌ 전원 제외' : `${group.matchCount}/${group.totalCount}명 가능`}
-                  </span>
-                  {!isBlocked && (
-                    <span className="ml-auto text-gray-400 text-xs">
-                      {isOpen ? `${restaurants.length}곳` : `${group.menus.length}개 메뉴`}
+            return (
+              <div key={group.category} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                <div className={`px-4 pt-4 ${isBlocked ? 'pb-4' : 'pb-3'}`}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <h2 className={`font-bold text-base ${isBlocked ? 'text-gray-400' : ''}`}>{group.category}</h2>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                      isFullMatch ? 'bg-green-100 text-green-700' :
+                      isBlocked   ? 'bg-red-100 text-red-400'    : 'bg-violet-100 text-violet-700'
+                    }`}>
+                      {isFullMatch ? '✓ 모두 가능' : isBlocked ? '❌ 전원 제외' : `${group.matchCount}/${group.totalCount}명 가능`}
                     </span>
+                    {!isBlocked && (
+                      <span className="ml-auto text-gray-400 text-xs">
+                        {isOpen ? `${restaurants.length}곳` : `${visibleMenus.length}개 메뉴`}
+                      </span>
+                    )}
+                  </div>
+                  {isBlocked ? (
+                    <p className="text-xs text-gray-400">모든 참여자가 제외한 카테고리예요</p>
+                  ) : (
+                    <>
+                      <p className="text-xs text-gray-400 mb-2">먹고 싶은 메뉴를 선택하세요</p>
+                      <div className="flex flex-wrap gap-2">
+                        {visibleMenus.map(menu => {
+                          const active = selectedMenu?.category === group.category && selectedMenu?.menu === menu.name
+                          return (
+                            <button
+                              key={menu.name}
+                              onClick={() => handleMenuClick(group.category, menu.name)}
+                              className={`px-3 py-1.5 rounded-full text-sm font-semibold border-2 transition-all active:scale-95 ${
+                                active
+                                  ? 'border-violet-500 bg-violet-600 text-white shadow-sm'
+                                  : 'border-violet-200 bg-violet-50 text-violet-600'
+                              }`}
+                            >
+                              {active ? '✓ ' : ''}{menu.name}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </>
                   )}
                 </div>
-
-                {/* 불가 카테고리는 메뉴 없이 안내 문구만 */}
-                {isBlocked ? (
-                  <p className="text-xs text-gray-400">모든 참여자가 제외한 카테고리예요</p>
-                ) : (
-                  <>
-                    <p className="text-xs text-gray-400 mb-2">먹고 싶은 메뉴를 선택하세요</p>
-                    <div className="flex flex-wrap gap-2">
-                      {group.menus.map(menu => {
-                        const active = selectedMenu?.category === group.category && selectedMenu?.menu === menu.name
-                        return (
-                          <button
-                            key={menu.name}
-                            onClick={() => handleMenuClick(group.category, menu.name)}
-                            className={`px-3 py-1.5 rounded-full text-sm font-semibold border-2 transition-all active:scale-95 ${
-                              active
-                                ? 'border-violet-500 bg-violet-600 text-white shadow-sm'
-                                : 'border-violet-200 bg-violet-50 text-violet-600'
-                            }`}
-                          >
-                            {active ? '✓ ' : ''}{menu.name}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </>
+                {isOpen && (
+                  <div className="border-t border-gray-100">
+                    <p className="px-4 py-2 text-xs text-gray-500 bg-gray-50">
+                      <span className="font-semibold text-violet-600">{selectedMenu?.menu}</span> 파는 식당 {restaurants.length}곳
+                    </p>
+                    {restaurants.length === 0 ? (
+                      <p className="px-4 py-4 text-center text-gray-400 text-sm">근처에 식당 정보가 없어요</p>
+                    ) : (
+                      <div className="divide-y divide-gray-50">
+                        {restaurants.map(r => {
+                          const ok = okCount(r.name)
+                          const voted = myVotes[r.name] === 'ok'
+                          return (
+                            <div key={r.name} className="p-3">
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold text-sm leading-snug">{r.name}</p>
+                                  {r.address && <p className="text-gray-400 text-xs mt-0.5 truncate">{r.address}</p>}
+                                  {r.distance && <p className="text-gray-400 text-xs">{formatDistance(r.distance)}</p>}
+                                </div>
+                                <a href={kakaoPlaceLink(r)} target="_blank" rel="noopener noreferrer"
+                                  className="flex-shrink-0 text-xs text-blue-500 font-medium underline">지도</a>
+                                <button
+                                  onClick={() => handleVote(r.name)}
+                                  disabled={voted}
+                                  className={`flex-shrink-0 px-4 py-2 rounded-xl font-bold text-sm transition-all active:scale-95 disabled:cursor-default ${
+                                    voted ? 'bg-green-500 text-white shadow-sm' : 'bg-gray-100 text-gray-600'
+                                  }`}>
+                                  {voted ? `✓ ${ok}` : `👍${ok > 0 ? ` ${ok}` : ''}`}
+                                </button>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
+            )
+          }
 
-              {/* 식당 목록 — 선택된 메뉴의 식당 표시 */}
-              {isOpen && (
-                <div className="border-t border-gray-100">
-                  <p className="px-4 py-2 text-xs text-gray-500 bg-gray-50">
-                    <span className="font-semibold text-violet-600">{selectedMenu?.menu}</span> 파는 식당 {restaurants.length}곳
-                  </p>
-                  {restaurants.length === 0 ? (
-                    <p className="px-4 py-4 text-center text-gray-400 text-sm">근처에 식당 정보가 없어요</p>
-                  ) : (
-                    <div className="divide-y divide-gray-50">
-                      {restaurants.map(r => {
-                        const ok = okCount(r.name)
-                        const voted = myVotes[r.name] === 'ok'
-                        return (
-                          <div key={r.name} className="p-3">
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-sm leading-snug">{r.name}</p>
-                                {r.address && <p className="text-gray-400 text-xs mt-0.5 truncate">{r.address}</p>}
-                                {r.distance && <p className="text-gray-400 text-xs">{formatDistance(r.distance)}</p>}
-                              </div>
-                              <a href={kakaoPlaceLink(r)} target="_blank" rel="noopener noreferrer"
-                                className="flex-shrink-0 text-xs text-blue-500 font-medium underline">지도</a>
-                              <button
-                                onClick={() => handleVote(r.name)}
-                                disabled={voted}
-                                className={`flex-shrink-0 px-4 py-2 rounded-xl font-bold text-sm transition-all active:scale-95 disabled:cursor-default ${
-                                  voted ? 'bg-green-500 text-white shadow-sm' : 'bg-gray-100 text-gray-600 active:scale-95'
-                                }`}>
-                                {voted ? `✓ ${ok}` : `👍${ok > 0 ? ` ${ok}` : ''}`}
-                              </button>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
+          const topGroups  = groups.slice(0, 3)
+          const moreGroups = groups.slice(3)
+
+          return (
+            <>
+              {/* 상위 3개 카테고리 */}
+              {topGroups.map(renderCard)}
+
+              {groups.length === 0 && (
+                <div className="text-center py-12 text-gray-400">
+                  <p className="text-4xl mb-3">😅</p>
+                  <p>추천 결과가 없어요</p>
                 </div>
               )}
-            </div>
+
+              {/* 재추천 버튼 — 상위 3개 바로 아래 */}
+              {groups.length > 0 && (
+                <div className="py-1">
+                  <button
+                    onClick={handleReRecommend}
+                    disabled={reRecommending}
+                    className="w-full bg-white border-2 border-violet-200 text-violet-600 font-bold py-4 rounded-2xl shadow-sm active:scale-95 transition-transform disabled:opacity-50 disabled:scale-100"
+                  >
+                    {reRecommending ? '🔄 새 조합 찾는 중...' : '🔀 다른 조합 추천받기'}
+                  </button>
+                  <p className="text-xs text-gray-400 mt-1.5 text-center">누르면 모든 참여자에게 새 추천이 적용돼요</p>
+                </div>
+              )}
+
+              {/* 더 보기 토글 */}
+              {moreGroups.length > 0 && (
+                <div>
+                  <button
+                    onClick={() => setShowMore(v => !v)}
+                    className="w-full py-3 text-sm font-semibold text-gray-500 flex items-center justify-center gap-1"
+                  >
+                    {showMore ? `접기 ∧` : `더 보기 (${moreGroups.length}개 카테고리) ∨`}
+                  </button>
+                  {showMore && moreGroups.map(renderCard)}
+                </div>
+              )}
+            </>
           )
-        })}
-
-        {groups.length === 0 && (
-          <div className="text-center py-12 text-gray-400">
-            <p className="text-4xl mb-3">😅</p>
-            <p>추천 결과가 없어요</p>
-          </div>
-        )}
-
-        {/* 재추천 버튼 */}
-        {groups.length > 0 && (
-          <div className="pt-2 pb-4 text-center">
-            <button
-              onClick={handleReRecommend}
-              disabled={reRecommending}
-              className="w-full bg-white border-2 border-violet-200 text-violet-600 font-bold py-4 rounded-2xl shadow-sm active:scale-95 transition-transform disabled:opacity-50 disabled:scale-100"
-            >
-              {reRecommending ? '🔄 새 조합 찾는 중...' : '🔀 다른 조합 추천받기'}
-            </button>
-            <p className="text-xs text-gray-400 mt-2">누르면 모든 참여자에게 새 추천이 적용돼요</p>
-          </div>
-        )}
+        })()}
       </div>
     </div>
   )
