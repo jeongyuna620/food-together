@@ -476,8 +476,9 @@ export default function ResultsPage() {
                 </div>
                 {isOpen && (
                   <div className="border-t border-gray-100">
-                    <p className="px-4 py-2 text-xs text-gray-500 bg-gray-50">
-                      <span className="font-semibold text-violet-600">{selectedMenu?.menu}</span> 파는 식당 {restaurants.length}곳
+                    <p className="px-4 py-2 text-xs bg-gray-50">
+                      <span className="font-semibold text-violet-600">{selectedMenu?.menu}</span>
+                      <span className="text-gray-500"> 식당 {restaurants.length}곳 · 가고 싶은 곳에 투표해주세요</span>
                     </p>
                     {restaurants.length === 0 ? (
                       <p className="px-4 py-4 text-center text-gray-400 text-sm">근처에 식당 정보가 없어요</p>
@@ -487,24 +488,28 @@ export default function ResultsPage() {
                           const ok = okCount(r.name)
                           const voted = myVotes[r.name] === 'ok'
                           return (
-                            <div key={r.name} className="p-3">
-                              <div className="flex items-center gap-2">
+                            <div key={r.name} className="p-3 space-y-2.5">
+                              <div className="flex items-start justify-between gap-2">
                                 <div className="flex-1 min-w-0">
                                   <p className="font-semibold text-sm leading-snug">{r.name}</p>
                                   {r.address && <p className="text-gray-400 text-xs mt-0.5 truncate">{r.address}</p>}
                                   {r.distance && <p className="text-gray-400 text-xs">{formatDistance(r.distance)}</p>}
                                 </div>
                                 <a href={kakaoPlaceLink(r)} target="_blank" rel="noopener noreferrer"
-                                  className="flex-shrink-0 text-xs text-blue-500 font-medium underline">지도</a>
-                                <button
-                                  onClick={() => handleVote(r.name)}
-                                  disabled={voted}
-                                  className={`flex-shrink-0 px-4 py-2 rounded-xl font-bold text-sm transition-all active:scale-95 disabled:cursor-default ${
-                                    voted ? 'bg-green-500 text-white shadow-sm' : 'bg-gray-100 text-gray-600'
-                                  }`}>
-                                  {voted ? `✓ ${ok}` : `👍${ok > 0 ? ` ${ok}` : ''}`}
-                                </button>
+                                  className="flex-shrink-0 text-xs text-blue-500 font-medium underline mt-0.5">지도</a>
                               </div>
+                              <button
+                                onClick={() => handleVote(r.name)}
+                                disabled={voted}
+                                className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95 disabled:cursor-default ${
+                                  voted
+                                    ? 'bg-green-500 text-white'
+                                    : 'bg-violet-50 border-2 border-violet-200 text-violet-600'
+                                }`}>
+                                {voted
+                                  ? `✓ 투표 완료${ok > 1 ? ` · ${ok}명` : ''}`
+                                  : `👍 여기 갈래요!${ok > 0 ? ` · ${ok}명` : ''}`}
+                              </button>
                             </div>
                           )
                         })}
